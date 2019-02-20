@@ -2049,7 +2049,7 @@ Function/WAVE getWaveMatchList()
 			String matchStr = StringFromList(j,waveMatchStr,"||")
 			tempList += ListMatch(itemList,matchStr,",")
 		EndFor
-		itemList = tempList
+		itemList = SortList(tempList,",",16)
 		
 		itemList = RemoveDuplicateList(itemList,";")
 		
@@ -3767,6 +3767,13 @@ Function/S resolveCmdLine(cmdLineStr,wsn,wsi)
 						outStr = ""
 						return outStr
 					EndIf
+					
+					//Ensures that the function only runs for the indicated wave set number,
+					//instead of repeating itself for every wave set.
+					If(wsnIndex != wsn)
+						outStr = ""
+						return outStr
+					EndIf
 				Else
 					wsnIndex = wsn
 				EndIf
@@ -3781,11 +3788,11 @@ Function/S resolveCmdLine(cmdLineStr,wsn,wsi)
 						return outStr
 					EndIf
 				Else
-					wsnIndex = wsi
+					wsiIndex = wsi
 				EndIf
 				
 				String theWaveSet = GetWaveSet(dsName,wsn=wsnIndex)
-				String theWaveStr = StringFromList(wsnIndex,theWaveSet,";")
+				String theWaveStr = StringFromList(wsiIndex,theWaveSet,";")
 				
 			Else
 				//No wsi specifier
