@@ -169,7 +169,7 @@ Function LoadAnalysisSuite([left,top])
 	Wave/T packageTable = root:Packages:analysisTools:packageTable
 	packageTable[0][0] = "Calcium Imaging"
 	packageTable[0][1] = "-------ROIs--------;MultiROI;ROI Grid;Filter ROI;Display ROIs;Kill ROI;Denoise;-------Maps-------;"
-	packageTable[0][1] += "df Map;Vector Sum Map;------Masks-------;Get Dendritic Mask;Mask Scan Data;"
+	packageTable[0][1] += "df Map;Vector Sum Map;Line Profile;------Masks-------;Get Dendritic Mask;Mask Scan Data;"
 	packageTable[0][1] += "----Registration---;Adjust Galvo Distortion;Register Image;Rescale Scans"
 	
 	//packageTable[1][0] = "Basic Functions"
