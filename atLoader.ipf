@@ -107,14 +107,32 @@ Function LoadAnalysisSuite([left,top])
 	NVAR areSeparated = root:Packages:analysisTools:areSeparated
 	areSeparated = 0
 	
-	If(!WaveExists(root:Packages:twoP:examine:scanListWave))
-		Make/T root:Packages:twoP:examine:scanListWave
+	//Fill out the scan list wave
+	If(!WaveExists(root:Packages:analysisTools:scanListWave))
+		Make/T root:Packages:analysisTools:scanListWave
 	EndIf
-	wave/T scanListWave = root:Packages:twoP:examine:scanListWave
+	wave/T scanListWave = root:Packages:analysisTools:scanListWave
 	
 	If(Exists("root:Packages:twoP:examine:scanListStr") !=2)
 		String/G root:Packages:twoP:examine:scanListStr
 	EndIf
+	
+	String scanList = NQ_ListScans("1,2,3,4,5")	//all scans
+	//Time Series
+	Variable tsStart = WhichListItem("\M1(Time Series",scanList,";") + 1
+	Variable tsEnd = WhichListItem("\M1(-",scanList,";") - 1
+	String timeSeries = StringsFromList(num2str(tsStart) + "-" + num2str(tsEnd),scanList,";")
+	
+	//Z Stacks
+	Variable zsStart = WhichListItem("\u005cM1(Z Stacks",scanList,";",tsEnd + 1) + 1
+	Variable zsEnd = WhichListItem("\M1(-",scanList,";",zsStart + 1) - 1
+	String zStacks = StringsFromList(num2str(zsStart) + "-" + num2str(zsEnd),scanList,";")
+	
+	timeSeries = timeSeries + zStacks
+	
+	Wave/T tempWave = ListToTextWave(timeSeries,";")
+	Redimension/N=(DimSize(tempWave,0)) scanListWave
+	scanListWave = tempWave
 	
 	String/G root:Packages:analysisTools:scanFolderList
 	SVAR scanFolderList = root:Packages:analysisTools:scanFolderList
@@ -127,7 +145,7 @@ Function LoadAnalysisSuite([left,top])
 		Make/O/N=(DimSize(scanListWave,0)) root:Packages:twoP:examine:selWave
 	EndIf
 	Wave selWave = root:Packages:twoP:examine:selWave
-	
+	Redimension/N=(DimSize(scanListWave,0)) selWave
 
 	If(!WaveExists(root:Packages:analysisTools:selFolderWave))
 		Make/O/N=(1) root:Packages:analysisTools:selFolderWave

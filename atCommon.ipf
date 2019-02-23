@@ -3660,6 +3660,22 @@ Function/WAVE StringListToTextWave(strList,separator)
 	return textWave
 End
 
+//Same as StringFromList, but is capable of extracting a range from the list
+Function/S StringsFromList(range,list,separator)
+	String range,list,separator
+	String outList = ""
+	Variable i,index
+	
+	range = ResolveListItems(range,separator)
+	
+	For(i=0;i<ItemsInList(range,";");i+=1)
+		index = str2num(StringFromList(i,range,";"))
+		outList += StringFromList(index,list,separator) + separator
+	EndFor	
+
+	return outList
+End
+
 Function selectALL(control,mode)
 	String control,mode
 	//Selection wave for the scan list

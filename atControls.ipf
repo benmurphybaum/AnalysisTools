@@ -411,7 +411,7 @@ Function atListBoxProc(lba) : ListBoxControl
 					For(i=0;i<DimSize(selWave,0);i+=1)
 						If(selWave[i] == 1)
 						scanListStr += listWave[i] + ";"
-						scanNum = i	
+						scanNum = str2num(StringFromList(ItemsInList(listWave[i],"_")-1,listWave[i]	,"_"))
 						Endif
 					EndFor
 					
