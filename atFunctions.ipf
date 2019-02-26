@@ -1730,9 +1730,7 @@ Function filterROI()
 		For(j=0;j<numScans;j+=1)
 			//get the scan name
 			theScanName = StringFromList(j,scanListStr,";")
-			
-			//determine the GetROI wave name
-			theName = "root:ROI_analysis:" + "ROI" + theROI + ":" + theScanName + "_" + channel + "_" + "ROI" + theROI + "_"
+				
 			strswitch(channel)
 				case "ch1":
 				case "ch2":
@@ -1740,8 +1738,12 @@ Function filterROI()
 					break
 				case "ratio":
 					suffix = "dGR"
+					channel = "1" //avoids putting 'ratio' as part of the name, since its dG/R
 					break
 			endswitch
+			
+			//determine the GetROI wave name
+			theName = "root:ROI_analysis:" + "ROI" + theROI + ":" + theScanName + "_" + channel + "_" + "ROI" + theROI + "_"
 			theName += suffix
 			
 			//Does the wave exist?
@@ -1994,6 +1996,7 @@ Function displayROIs()
 					break
 				case "ratio":
 					suffix = "dGR"
+					channel = "1"
 					break
 			endswitch
 			
@@ -5059,12 +5062,35 @@ Function AverageWaves()
 	String theWaveList = getWaveNames()
 	numWaves = ItemsInList(theWaveList,";")
 	
+	If(numWaves == 0)
+		print "No waves were processed"
+		return 0
+	EndIf
+	
+	String cdf = GetWavesDataFolder($StringFromList(0,theWaveList,";"),1)
+	
+	ControlInfo/W=analysis_tools outFolder
+	String outFolder = S_Value
+	
+	//Parent data folder must already exist to use the output folder option
+	outFolder = RemoveEnding(outFolder,":")
+	Variable isRoot = (cmpstr(StringFromList(0,outFolder,":"),"root") == 0) ? 1 : 0
+	
+	//If it isn't a full path, add the output folder to the current data folder
+	If(!isRoot)
+		outFolder = cdf + outFolder
+	EndIf
+	
+	If(!DataFolderExists(outFolder))
+		NewDataFolder $outFolder
+	EndIf
+	
 	//Set data folder to that of the first wave on the wavelist
-	SetDataFolder GetWavesDataFolder($StringFromList(0,theWaveList,";"),1)
+	SetDataFolder cdf
 	
 	//Make output wave
 	Wave theWave = $StringFromList(0,theWaveList,";")
-	String outWaveName = NameOfWave(theWave) + "_avg"
+	String outWaveName = outFolder + ":" + NameOfWave(theWave) + "_avg"
 	
 	Variable dims = WaveDims(theWave)
 	
@@ -5109,13 +5135,36 @@ Function ErrorWaves()
 	String theWaveList = getWaveNames()
 	numWaves = ItemsInList(theWaveList,";")
 	
+	If(numWaves == 0)
+		print "No waves were processed"
+		return 0
+	EndIf
+	
+	String cdf = GetWavesDataFolder($StringFromList(0,theWaveList,";"),1)
+	
+	ControlInfo/W=analysis_tools outFolder
+	String outFolder = S_Value
+	
+	//Parent data folder must already exist to use the output folder option
+	outFolder = RemoveEnding(outFolder,":")
+	Variable isRoot = (cmpstr(StringFromList(0,outFolder,":"),"root") == 0) ? 1 : 0
+	
+	//If it isn't a full path, add the output folder to the current data folder
+	If(!isRoot)
+		outFolder = cdf + outFolder
+	EndIf
+	
+	If(!DataFolderExists(outFolder))
+		NewDataFolder $outFolder
+	EndIf
+	
 	//Set data folder to that of the first wave on the wavelist
-	SetDataFolder GetWavesDataFolder($StringFromList(0,theWaveList,";"),1)
+	SetDataFolder cdf
 	
 	//Make output wave
 	Wave theWave = $StringFromList(0,theWaveList,";")
 	
-	String outWaveName = NameOfWave(theWave) + "_" + error
+	String outWaveName = outFolder + ":" + NameOfWave(theWave) + "_" + error
 	
 	Variable dims = WaveDims(theWave)
 	

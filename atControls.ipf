@@ -247,12 +247,11 @@ Function atButtonProc(ba) : ButtonControl
 					Wave/T dataSetNames = root:Packages:analysisTools:DataSets:dataSetNames
 					ControlInfo/W=analysis_tools dataSetName
 					addDataSet(S_Value)
-					ListBox dataSetListBox win=analysis_tools,selRow=DimSize(dataSetNames,0)-1
 					fillFilterTable()
 					
 					Wave/T dsFilters = root:Packages:analysisTools:DataSets:dsFilters
 					index = tableMatch(S_Value,dsFilters)
-					dsFilters[index][1] = getListRange("0-1",dsFilters[index][1],";") + ";;;;;;"
+					dsFilters[index][1] = getListRange("0-2",dsFilters[index][1],";") + ";;;;;;;"
 					
 					break
 				case "addDataSetFromSelection":
@@ -264,7 +263,7 @@ Function atButtonProc(ba) : ButtonControl
 					
 					Wave/T dsFilters = root:Packages:analysisTools:DataSets:dsFilters
 					index = tableMatch(S_Value,dsFilters)
-					dsFilters[index][1] = getListRange("0-1",dsFilters[index][1],";") + ";;;;;;"
+					dsFilters[index][1] = getListRange("0-2",dsFilters[index][1],";") + ";;;;;;;"
 					break
 				case "delDataSet":
 					Wave/T listWave = root:Packages:analysisTools:DataSets:dataSetNames

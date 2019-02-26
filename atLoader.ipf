@@ -212,11 +212,7 @@ Function LoadAnalysisSuite([left,top])
 	SVAR opList = root:Packages:analysisTools:opList
 	opList = "Cmd Line;avg;sem;sum;delete;edit;display;differentiate"
 	
-	Make/O/T/N=1 root:Packages:analysisTools:AT_waveListTable
-	Wave/T AT_waveListTable = root:Packages:analysisTools:AT_waveListTable
-	Make/O/T/N=1 root:Packages:analysisTools:AT_WaveListTable_FullPath
-	Wave/T AT_WaveListTable_FullPath = root:Packages:analysisTools:AT_WaveListTable_FullPath
-	Make/O/T root:Packages:analysisTools:DataSets:ogAT_WaveListTable_UnGroup
+	
 	
 	Make/O/N=1 root:Packages:analysisTools:AT_selWave
 	Wave AT_selWave = root:Packages:analysisTools:AT_selWave
@@ -248,6 +244,12 @@ Function LoadAnalysisSuite([left,top])
 	If(!DataFolderExists("root:Packages:analysisTools:DataSets"))
 		NewDataFolder root:Packages:analysisTools:DataSets
 	EndIf
+	
+	Make/O/T/N=1 root:Packages:analysisTools:AT_waveListTable
+	Wave/T AT_waveListTable = root:Packages:analysisTools:AT_waveListTable
+	Make/O/T/N=1 root:Packages:analysisTools:AT_WaveListTable_FullPath
+	Wave/T AT_WaveListTable_FullPath = root:Packages:analysisTools:AT_WaveListTable_FullPath
+	Make/O/T root:Packages:analysisTools:DataSets:ogAT_WaveListTable_UnGroup
 	
 	String/G root:Packages:analysisTools:DataSets:wsDims
 	Variable/G root:Packages:analysisTools:DataSets:numWaveSets
@@ -394,7 +396,9 @@ Function LoadAnalysisSuite([left,top])
 	SetVariable spatialFilterCheck win=analysis_tools,pos={215,163},bodywidth=35,size={100,20},title="Pre Spatial Filter",value=_NUM:5,disable=1
 	SetVariable postSpatialFilter win=analysis_tools,pos={215,183},bodywidth=35,size={100,20},title="Post Spatial Filter",value=_NUM:3,disable=1
 	
-		
+	//Average
+	SetVariable outFolder win=analysis_tools,pos={20,63},size={175,20},title="Output Folder:",value=_STR:"",disable=1
+	
 	//Errors
 	PopUpMenu errType win=analysis_tools,pos={20,120},size={50,20},title="Type",value="sem;sdev",disable=1
 	
@@ -658,12 +662,12 @@ Function CreateControlLists(cmdList)
 	//Average
 	String/G root:Packages:analysisTools:ctrlList_average
 	SVAR ctrlList_average = root:Packages:analysisTools:ctrlList_average
-	ctrlList_average = "extFuncDS;extFuncChannelPop;extFuncDSListBox"
+	ctrlList_average = "extFuncDS;extFuncChannelPop;extFuncDSListBox;outFolder"
 	
 	//Error
 	String/G root:Packages:analysisTools:ctrlList_error
 	SVAR ctrlList_error = root:Packages:analysisTools:ctrlList_error
-	ctrlList_error = "extFuncDS;extFuncChannelPop;extFuncDSListBox;errType"
+	ctrlList_error = "extFuncDS;extFuncChannelPop;extFuncDSListBox;errType;outFolder"
 	
 	//Kill Waves
 	String/G root:Packages:analysisTools:ctrlList_killwaves
@@ -708,7 +712,7 @@ Function CreateControlLists(cmdList)
 	String/G root:Packages:analysisTools:ctrlList_displayROIs
 	SVAR ctrlList_displayROIs = root:Packages:analysisTools:ctrlList_displayROIs
 	ctrlList_displayROIs = "horDisplayArrangementPopUp;vertDisplayArrangementPopUp;dispAveragesCheck;scanOrderROIdisplay;roiOrderROIdisplay;"
-	ctrlList_displayROIs += "presetAngleListPop;addPresetAngle;deletePresetAngle"
+	ctrlList_displayROIs += "presetAngleListPop;addPresetAngle;deletePresetAngle;ch1Check;ch2Check;ratioCheck"
 	
 	//Registering scans that are distorted during bidirectional scanning
 	String/G root:Packages:analysisTools:ctrlList_adjustGalvoDistort
@@ -1136,7 +1140,7 @@ Function ChangeControls(currentCmd,prevCmd)
 		case "Get Dendritic Mask":
 			CheckBox ch1Check,win=analysis_tools,pos={10,61}
 			CheckBox ch2Check,win=analysis_tools,pos={50,61}
-			CheckBox ratioCheck,win=analysis_tools,pos={90,61}
+			CheckBox ratioCheck,win=analysis_tools,pos={90,61},value=0
 			break
 		case "Mask Scan Data":
 			PopUpMenu maskListPopUp win=analysis_tools,value=GetMaskWaveList()
@@ -1212,6 +1216,9 @@ Function ChangeControls(currentCmd,prevCmd)
 			PopUpMenu presetAngleListPop,win=analysis_tools,pos={10,124}
 			Button addPresetAngle,win=analysis_tools,pos={131,124}
 			Button deletePresetAngle,win=analysis_tools,pos={156,124}
+			CheckBox ch1Check,win=analysis_tools,pos={10,39}
+			CheckBox ch2Check,win=analysis_tools,pos={50,39}
+			CheckBox ratioCheck,win=analysis_tools,pos={90,39}
 			break
 		case "External Function":			
 			ControlInfo/W=analysisTools extFuncPopUp

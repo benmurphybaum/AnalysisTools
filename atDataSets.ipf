@@ -174,8 +174,8 @@ Function addDataSet(dataSetName,[selection])
 		//Does the data set name already exist?
 		If(tableMatch(dataSetName,dataSetNames) != -1)
 			currentNumSets = DimSize(dataSetNames,0)			
-			dataSetNames[currentNumSets-1] = dataSetName
-			ListBox dataSetListBox win=analysis_tools,selrow=currentNumSets
+			Variable index = tableMatch(dataSetName,dataSetNames)
+			ListBox dataSetListBox win=analysis_tools,selrow=index
 		Else
 			currentNumSets = DimSize(dataSetNames,0)
 			Redimension/N=(currentNumSets+1) dataSetNames,dataSetSelWave
@@ -319,6 +319,8 @@ Function/S GetDSFilters()
 	dsFilters += S_Value + ";"
 	ControlInfo/W=analysis_tools waveNotMatch
 	dsFilters += S_Value + ";"
+	ControlInfo/W=analysis_tools relativeFolderMatch
+	dsFilters += S_Value + ";"
 	ControlInfo/W=analysis_tools waveGrouping
 	dsFilters += S_Value + ";"
 	ControlInfo/W=analysis_tools prefixGroup
@@ -366,11 +368,15 @@ Function updateWSFilters()
 	
 	
 	//wave grouping variable
-	SetVariable waveGrouping win=analysis_tools,value=_STR:StringFromList(2,filters,";")
+	SetVariable waveGrouping win=analysis_tools,value=_STR:StringFromList(3,filters,";")
 	//prefix,group,series,etc. variables
 	For(i=0;i<ItemsInList(groupList,";");i+=1)
-		SetVariable $StringFromList(i,groupList,";") win=analysis_tools,value=_STR:StringFromList(i+3,filters,";")
+		SetVariable $StringFromList(i,groupList,";") win=analysis_tools,value=_STR:StringFromList(i+4,filters,";")
 	EndFor	
+	//match box strings
+	SetVariable waveMatch win=analysis_tools,value=_STR:StringFromList(0,filters,";")
+	SetVariable waveNotMatch win=analysis_tools,value=_STR:StringFromList(1,filters,";")
+	SetVariable relativeFolderMatch win=analysis_tools,value=_STR:StringFromList(2,filters,";")
 End
 
 Function updateWSDimText()
@@ -757,7 +763,7 @@ Function fillFilterTable()
 	Redimension/N=(currentNumSets,2) dsFilters	
 	ControlInfo/W=analysis_tools dataSetListBox
 	
-	If(V_Value == -1 || V_Value > currentNumSets - 1)
+	If(V_Value == -1 || V_Value > currentNumSets)
 		//no data set selected or invalid data set
 		return -1
 	EndIf
