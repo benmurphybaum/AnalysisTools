@@ -1520,7 +1520,6 @@ Function getLineHook(s)
 	NVAR distance = root:Packages:analysisTools:distance 
 	Wave/T/Z distanceWave = root:Packages:analysisTools:distanceWave
 
-		
 	If(DimSize(WavesOnGraph,0))
 		Wave theWave = $WavesOnGraph[0][1]
 		Variable count = 0
@@ -1867,7 +1866,7 @@ Function getLineHook(s)
 					EndIf
 				EndIf
 		
-				SetWindow $windowName, hook(getLineHook)=$""
+				//SetWindow $windowName, hook(getLineHook)=$""
 				
 				//Sets the ending ROI name and the distance between the start/end ROIs
 				If(distOnly)
@@ -1937,4 +1936,32 @@ Function getLineHook(s)
 	
 	return hookResult
 
+End
+
+Function ptsOverThreshold(theWave,threshold,overUnder)
+	Wave theWave
+	Variable threshold,overUnder
+	Variable i,numpts,count = 0
+	
+	Duplicate/FREE theWave,temp
+	WaveTransform zapNaNs temp
+	
+	If(overUnder)
+		//over threshold
+		For(i=0;i<DimSize(temp,0);i+=1)
+			If(temp[i] > threshold)
+				count += 1
+			EndIf
+		EndFor
+	Else
+		//under threshold
+		For(i=0;i<DimSize(temp,0);i+=1)
+			If(temp[i] < threshold)
+				count += 1
+			EndIf
+		EndFor
+	EndIf
+
+	print(count)
+	print(count/DimSize(temp,0))
 End

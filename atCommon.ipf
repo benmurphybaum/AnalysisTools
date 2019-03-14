@@ -3832,3 +3832,47 @@ Function/S resolveCmdLine(cmdLineStr,wsn,wsi)
 	While(pos1 != -1)
 	return outStr
 End
+
+//Takes the scaling of refWave, and applies it to testWave
+//Waves must have the same dimensions
+Function matchScale(testWave,refWave[,ignoreDims])
+	Wave testWave,refWave
+	Variable ignoreDims
+	
+	If(ParamIsDefault(ignoreDims))
+		ignoreDims = 0
+	EndIf
+	
+	//check wave existence
+	If(!WaveExists(testWave))
+		Abort "Couldn't find the wave " + NameOfWave(testWave)
+	EndIf
+		
+	If(!WaveExists(refWave))
+		Abort "Couldn't find the wave " + NameOfWave(refWave)
+	EndIf
+	
+	Variable xSize,ySize,zSize,xSizeRef,ySizeRef,zSizeRef
+	
+	//dimensions of each wave
+	xSizeRef = DimSize(refWave,0)
+	ySizeRef = DimSize(refWave,1)
+	zSizeRef = DimSize(refWave,2)
+	
+	xSize = DimSize(testWave,0)
+	ySize = DimSize(testWave,1)
+	zSize = DimSize(testWave,2)
+	
+	//set scales
+	If(ignoreDims)
+		SetScale/P x,DimOffset(refWave,0),DimDelta(refWave,0),testWave
+		SetScale/P y,DimOffset(refWave,1),DimDelta(refWave,1),testWave
+		SetScale/P z,DimOffset(refWave,2),DimDelta(refWave,2),testWave
+	Else
+		If(xSizeRef == xSize && ySizeRef == ySize && zSizeRef == zSize)
+			SetScale/P x,DimOffset(refWave,0),DimDelta(refWave,0),testWave
+			SetScale/P y,DimOffset(refWave,1),DimDelta(refWave,1),testWave
+			SetScale/P z,DimOffset(refWave,2),DimDelta(refWave,2),testWave
+		EndIf
+	EndIf
+End

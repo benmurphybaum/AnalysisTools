@@ -53,6 +53,36 @@ Function SetDefaults()
 	SetVariable denoiseDataFolder win=analysis_tools,value=_STR:"bmb:Users:bmb:Documents:Denoise_Data"
 End
 
+//Organizes the function list into packages
+Function CreatePackages()
+	
+	String/G root:Packages:analysisTools:cmdList
+	SVAR cmdList = root:Packages:analysisTools:cmdList
+	Variable i
+	
+	//packageTable: rows are the package name, columns are the contents of that package
+	Make/O/T/N=(1,2) root:Packages:analysisTools:packageTable
+	Wave/T packageTable = root:Packages:analysisTools:packageTable
+	packageTable[0][0] = "Calcium Imaging"
+	packageTable[0][1] =  "-------Basic-------;Max Proj;"//use ------ Section ------ to divide categories within the package 
+	packageTable[0][1] += "-------ROIs--------;MultiROI;ROI Grid;Filter ROI;Display ROIs;Kill ROI;Denoise;"
+	packageTable[0][1] += "-------Maps--------;df Map;Vector Sum Map;Line Profile;Apply Map Threshold;"
+	packageTable[0][1] += "-------Masks-------;Get Dendritic Mask;Mask Scan Data;"
+	packageTable[0][1] += "----Registration---;Adjust Galvo Distortion;Register Image;Rescale Scans;"
+	
+	//packageTable[1][0] = "Basic Functions"
+	//packageTable[1][1] = "-------------------;Average;Error"
+	cmdList = "Data Sets;External Function;---------------;Load PClamp;Browse PClamp;Load Stimulus Data;---------------;Run Cmd Line;Average;Error;Kill Waves;Duplicate/Rename;----Packages----;"
+	
+	For(i=0;i<DimSize(packageTable,0);i+=1)
+		If(!strlen(packageTable[i][0]))
+			break
+		EndIf
+		cmdList += packageTable[i][0] + ";"
+	EndFor
+
+End
+
 Function LoadAnalysisSuite([left,top])
 	//So the window stays in position upon reload
 	Variable left,top
@@ -175,27 +205,13 @@ Function LoadAnalysisSuite([left,top])
 	String/G root:Packages:twoP:examine:scanListStr
 	String/G root:Packages:twoP:examine:ROIListStr
 	
-	String/G root:Packages:analysisTools:cmdList
 	String/G root:Packages:analysisTools:currentCmd
 	String/G root:Packages:analysisTools:prevCmd
 	SVAR prevCmd = root:Packages:analysisTools:prevCmd
 	prevCmd = ""
+	
+	CreatePackages()
 	SVAR cmdList = root:Packages:analysisTools:cmdList
-	
-	//Function Packages
-	Make/O/T/N=(2,2) root:Packages:analysisTools:packageTable
-	Wave/T packageTable = root:Packages:analysisTools:packageTable
-	packageTable[0][0] = "Calcium Imaging"
-	packageTable[0][1] = "-------ROIs--------;MultiROI;ROI Grid;Filter ROI;Display ROIs;Kill ROI;Denoise;-------Maps-------;"
-	packageTable[0][1] += "df Map;Vector Sum Map;Line Profile;------Masks-------;Get Dendritic Mask;Mask Scan Data;"
-	packageTable[0][1] += "----Registration---;Adjust Galvo Distortion;Register Image;Rescale Scans"
-	
-	//packageTable[1][0] = "Basic Functions"
-	//packageTable[1][1] = "-------------------;Average;Error"
-	
-	
-	cmdList = "Data Sets;External Function;---------------;Load PClamp;Browse PClamp;Load Stimulus Data;---------------;Run Cmd Line;Average;Error;Kill Waves;Duplicate/Rename;----Packages----;Calcium Imaging"
-
 	SVAR currentCmd = root:Packages:analysisTools:currentCmd
 	currentCmd = StringFromList(0,cmdList,";")
 	
@@ -395,6 +411,9 @@ Function LoadAnalysisSuite([left,top])
 	CheckBox RemoveLaserResponseCheck win=analysis_tools,pos={10,150},size={150,20},title="Remove Laser Response",disable=1
 	SetVariable spatialFilterCheck win=analysis_tools,pos={215,163},bodywidth=35,size={100,20},title="Pre Spatial Filter",value=_NUM:5,disable=1
 	SetVariable postSpatialFilter win=analysis_tools,pos={215,183},bodywidth=35,size={100,20},title="Post Spatial Filter",value=_NUM:3,disable=1
+	
+	//For Map threshold 
+	SetVariable mapThreshold win=analysis_tools,pos={20,60},size={100,20},title="Threshold",value=_NUM:0,disable=1
 	
 	//Average
 	SetVariable outFolder win=analysis_tools,pos={20,63},size={175,20},title="Output Folder:",value=_STR:"",disable=1
@@ -658,7 +677,11 @@ Function CreateControlLists(cmdList)
 	ctrlList_dfMap = "ch1Check;ch2Check;ratioCheck;maskListPopUp;varianceMapCheck;peakStVar;peakEndVar;bslnStVar;bslnEndVar;histogramCheck;cleanUpNoise;"
 	ctrlList_dfMap += "RemoveLaserResponseCheck;SmoothFilterVar;SmoothBox;spatialFilterCheck;maskAllFoldersCheck;postSpatialFilter;cleanUpNoiseThresh;doDarkSubtract"
 
-		
+	//Apply Map Threshold
+	String/G root:Packages:analysisTools:ctrlList_applyMapThreshold
+	SVAR ctrlList_applyMapThreshold = root:Packages:analysisTools:ctrlList_applyMapThreshold
+	ctrlList_applyMapThreshold = "extFuncDS;extFuncChannelPop;extFuncDSListBox;mapThreshold;"
+	
 	//Average
 	String/G root:Packages:analysisTools:ctrlList_average
 	SVAR ctrlList_average = root:Packages:analysisTools:ctrlList_average
@@ -823,6 +846,12 @@ Function CreateControlLists(cmdList)
 	String/G root:Packages:analysisTools:ctrlList_runCmdLine
 	SVAR ctrlList_runCmdLine = root:Packages:analysisTools:ctrlList_runCmdLine
 	ctrlList_runCmdLine = "cmdLineStr;extFuncDS;extFuncChannelPop;extFuncDSListBox"
+	
+	//Max Proj
+	String/G root:Packages:analysisTools:ctrlList_maxProj
+	SVAR ctrlList_maxProj = root:Packages:analysisTools:ctrlList_maxProj
+	ctrlList_maxProj = "extFuncDS;extFuncChannelPop;extFuncDSListBox"
+	
 End
 
 Function ChangeControls(currentCmd,prevCmd)
@@ -945,6 +974,12 @@ Function ChangeControls(currentCmd,prevCmd)
 		case "Run Cmd Line":
 			SVAR ctrlList = root:Packages:analysisTools:ctrlList_runCmdLine
 			break
+		case "Max Proj":
+			SVAR ctrlList = root:Packages:analysisTools:ctrlList_maxProj
+			break
+		case "Apply Map Threshold":
+			SVAR ctrlList = root:Packages:analysisTools:ctrlList_applyMapThreshold
+			break
 	endswitch
 	
 	If(strlen(prevCmd))
@@ -965,7 +1000,8 @@ Function ChangeControls(currentCmd,prevCmd)
 		case "dF Map":
 			SVAR ctrlList = root:Packages:analysisTools:ctrlList_dfMap
 			//runCmdStr = "dFMaps()"
-			runCmdStr = "dfMapSimple()"
+			//runCmdStr = "dfMapSimple()"
+			runCmdStr = "dfMapMultiThread()"
 			break
 		case "Average":
 			SVAR ctrlList = root:Packages:analysisTools:ctrlList_average
@@ -997,7 +1033,7 @@ Function ChangeControls(currentCmd,prevCmd)
 			break
 		case "Get Dendritic Mask":
 			SVAR ctrlList = root:Packages:analysisTools:ctrlList_getDendriticMask
-			runCmdStr = "getDendriticMask()"
+			runCmdStr = "getDendriticMaskInit()"
 			break
 		case "Mask Scan Data":
 			SVAR ctrlList = root:Packages:analysisTools:ctrlList_maskScanData
@@ -1086,6 +1122,14 @@ Function ChangeControls(currentCmd,prevCmd)
 		case "Run Cmd Line":
 			SVAR ctrlList = root:Packages:analysisTools:ctrlList_runCmdLine
 			runCmdStr = ""	//will resolve at run time
+			break
+		case "Max Proj":
+			SVAR ctrlList = root:Packages:analysisTools:ctrlList_maxProj
+			runCmdStr = "atMaxProj()"
+			break
+		case "Apply Map Threshold":
+			SVAR ctrlList = root:Packages:analysisTools:ctrlList_applyMapThreshold
+			runCmdStr = "mapThresh()"
 			break
 		default:
 			//Loads a package if its not a function
