@@ -181,7 +181,7 @@ Function addDataSet(dataSetName,[selection])
 			Redimension/N=(currentNumSets+1) dataSetNames,dataSetSelWave
 			
 			dataSetNames[currentNumSets] = dataSetName
-			ListBox dataSetListBox win=analysis_tools,selrow=currentNumSets+1
+			ListBox dataSetListBox win=analysis_tools,selrow=currentNumSets
 		EndIf
 		
 		fillFilterTable()
@@ -767,6 +767,7 @@ Function fillFilterTable()
 		//no data set selected or invalid data set
 		return -1
 	EndIf
+	
 	
 	dsFilters[V_Value][0] = dataSetNames[V_Value]
 	dsFilters[V_Value][1] = GetDSFilters()
