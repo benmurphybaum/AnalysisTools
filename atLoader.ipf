@@ -400,7 +400,7 @@ Function LoadAnalysisSuite([left,top])
 	//SetVariable roiOrderROIdisplay win=analysis_tools,pos={10,yPos+60},size={175,20},title="ROI Order",value=_STR:"",disable=1
 	
 	////////SS edit Nov6 2018/////////////////////
-	SetVariable GraphName win = analysis_tools, pos = {10, ypos+80}, size = {200,20}, title = "Graph Name", value=_STR:"Control8dir",disable=1
+	SetVariable GraphName win = analysis_tools, pos = {10, ypos+85}, size = {175,20}, title = "Graph Name", value=_STR:"Control8dir",disable=1
 	////////SS edit Nov6 2018/////////////////////
 	
 	//for Get Dendritic Mask Function
@@ -636,7 +636,7 @@ Function LoadAnalysisSuite([left,top])
 		presetAngleLists += presetAngleWave[i][0] + ";"
 	EndFor
 
-	PopUpMenu presetAngleListPop win=analysis_tools,title="Presets",bodywidth=80,pos={10,yPos-1},value=#"root:Packages:analysisTools:presetAngleLists",disable=0,proc=atPopProc
+	PopUpMenu presetAngleListPop win=analysis_tools,title="Presets",pos={10,yPos-1},size={80,20},value=#"root:Packages:analysisTools:presetAngleLists",disable=0,proc=atPopProc
 	Button addPresetAngle win=analysis_tools,title="+",pos={100,yPos-1},size={20,20},disable=1,proc=atButtonProc
 	Button deletePresetAngle win=analysis_tools,title="-",pos={125,yPos-1},size={20,20},disable=1,proc=atButtonProc
 	
@@ -1227,10 +1227,10 @@ Function ChangeControls(currentCmd,prevCmd)
 		case "Line Profile":
 			CheckBox ch1Check,win=analysis_tools,pos={202,142}
 			CheckBox ch2Check,win=analysis_tools,pos={202,162}
-			SetVariable bslnStVar win=analysis_tools,pos={248,165}
-			SetVariable bslnEndVar win=analysis_tools,pos={248,185}
-			SetVariable peakStVar win=analysis_tools,pos={248,206}
-			SetVariable peakEndVar win=analysis_tools,pos={248,226}
+			SetVariable bslnStVar win=analysis_tools,pos={248,165},bodywidth=35
+			SetVariable bslnEndVar win=analysis_tools,pos={248,185},bodywidth=35
+			SetVariable peakStVar win=analysis_tools,pos={248,206},bodywidth=35
+			SetVariable peakEndVar win=analysis_tools,pos={248,226},bodywidth=35
 			CheckBox SmoothBox,win=analysis_tools,pos={115,184}
 			SetVariable SmoothFilterVar,win=analysis_tools,pos={135,185}
 			break
@@ -1252,8 +1252,8 @@ Function ChangeControls(currentCmd,prevCmd)
 			CheckBox ratioCheck,win=analysis_tools,pos={90,61}
 			SetVariable angleList,win=analysis_tools,pos={10,81}
 			PopUpMenu presetAngleListPop,win=analysis_tools,pos={10,101}
-			Button addPresetAngle,win=analysis_tools,pos={130,101}
-			Button deletePresetAngle,win=analysis_tools,pos={155,101}
+			Button addPresetAngle,win=analysis_tools,pos={140,101}
+			Button deletePresetAngle,win=analysis_tools,pos={165,101}
 			CheckBox histogramCheck win=analysis_tools,pos={10,125}
 			break
 		case "Rescale Scans":
@@ -1262,7 +1262,7 @@ Function ChangeControls(currentCmd,prevCmd)
 			break
 		case "Display ROIs":
 			PopUpMenu presetAngleListPop,win=analysis_tools,pos={10,124}
-			Button addPresetAngle,win=analysis_tools,pos={131,124}
+			Button addPresetAngle,win=analysis_tools,pos={140,124}
 			Button deletePresetAngle,win=analysis_tools,pos={156,124}
 			CheckBox ch1Check,win=analysis_tools,pos={10,39}
 			CheckBox ch2Check,win=analysis_tools,pos={50,39}
@@ -1320,8 +1320,8 @@ Function ChangeControls(currentCmd,prevCmd)
 			CheckBox useScanListCheck win=analysis_tools,pos={115,142},title="Use Scan List"
 			SetVariable angleList,win=analysis_tools,pos={10,186}
 			PopUpMenu presetAngleListPop,win=analysis_tools,pos={10,205}
-			Button addPresetAngle,win=analysis_tools,pos={131,205}
-			Button deletePresetAngle,win=analysis_tools,pos={156,205}
+			Button addPresetAngle,win=analysis_tools,pos={140,205}
+			Button deletePresetAngle,win=analysis_tools,pos={165,205}
 			CheckBox RemoveLaserResponseCheck win=analysis_tools,pos={10,231}
 			CheckBox doDarkSubtract win=analysis_tools,pos={10,250}
 			PopUpMenu extFuncDS win=analysis_tools,pos={21,90}
