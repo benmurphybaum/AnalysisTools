@@ -399,6 +399,10 @@ Function LoadAnalysisSuite([left,top])
 	SetVariable scanOrderROIdisplay win=analysis_tools,pos={10,yPos+40},size={175,20},title="Scan Order",value=_STR:"",disable=1
 	//SetVariable roiOrderROIdisplay win=analysis_tools,pos={10,yPos+60},size={175,20},title="ROI Order",value=_STR:"",disable=1
 	
+	////////SS edit Nov6 2018/////////////////////
+	SetVariable GraphName win = analysis_tools, pos = {10, ypos+80}, size = {200,20}, title = "Graph Name", value=_STR:"Control8dir",disable=1
+	////////SS edit Nov6 2018/////////////////////
+	
 	//for Get Dendritic Mask Function
 	SetVariable maskThreshold win=analysis_tools,pos={96,62},size={100,20},title="Threshold",value=_NUM:0.05,limits={0,inf,0.005},disable=1
 	CheckBox mask3DCheck win=analysis_tools,pos={10,82},size={50,20},title="3D",value=0,disable=1
@@ -735,7 +739,7 @@ Function CreateControlLists(cmdList)
 	String/G root:Packages:analysisTools:ctrlList_displayROIs
 	SVAR ctrlList_displayROIs = root:Packages:analysisTools:ctrlList_displayROIs
 	ctrlList_displayROIs = "horDisplayArrangementPopUp;vertDisplayArrangementPopUp;dispAveragesCheck;scanOrderROIdisplay;roiOrderROIdisplay;"
-	ctrlList_displayROIs += "presetAngleListPop;addPresetAngle;deletePresetAngle;ch1Check;ch2Check;ratioCheck"
+	ctrlList_displayROIs += "presetAngleListPop;addPresetAngle;deletePresetAngle;ch1Check;ch2Check;ratioCheck;graphName" // SS edit Nov6 2018
 	
 	//Registering scans that are distorted during bidirectional scanning
 	String/G root:Packages:analysisTools:ctrlList_adjustGalvoDistort

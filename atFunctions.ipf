@@ -919,6 +919,12 @@ Function GetROI()
 					peakDF[counter] = getPeakVals(dF,pkStart,pkEnd,pkWindow)
 				EndIf
 				
+				/////////////////SS edit 30 Dec 2018////////////////////
+				Note/K $dFname // kill existing note
+				Note $dFname,"peak:"+num2str(getPeakVals(dF,pkStart,pkEnd,pkWindow))+";"
+				
+				/////////////////SS edit 30 Dec 2018////////////////////
+				
 				If(doAvg)
 					If(j == 0 || nextBatch == 1)
 						baseName = theScanName
@@ -1856,7 +1862,7 @@ Function displayROIs()
 	SVAR ROIListStr = root:Packages:twoP:examine:ROIListStr
 	
 	String horArrange,vertArrange,ROI,Scan,Path,leftAxis,bottomAxis
-	String scanOrderStr,roiOrderStr
+	String scanOrderStr,roiOrderStr, WindowName //SS edit NOV5 2018
 	Variable numScans,numROIs,numTraces,horDim,vertDim,horDelta,vertDelta,i,j,count
 	Variable maxValue,minValue,startLeft,endLeft,startBottom,endBottom,numHorAxes,numVertAxes
 	Variable doAverages
@@ -1877,6 +1883,11 @@ Function displayROIs()
 	
 	ControlInfo/W=analysis_tools scanOrderROIdisplay
 	scanOrderStr = S_Value
+	
+	//////////SS edit NOV5 2018////////////////////////
+	ControlInfo/W=analysis_tools graphName
+	WindowName = S_Value
+	//////////SS edit NOV5 2018////////////////////////
 	
 	Make/FREE/N=(ItemsInList(scanOrderStr,",")) scanOrderWave
 	Make/FREE/N=(ItemsInList(scanOrderStr,",")) scanOrderIndex = x
@@ -1959,7 +1970,16 @@ Function displayROIs()
 	count = 0
 	
 	//Build ROI display
-	Display
+	///////////////SS edit NOv6 2018/////////////////
+	Dowindow/F $WindowName
+	if(V_Flag) 
+	else	
+		Display/N = $windowname 
+	endif
+	string ROINote
+	variable Gred, Ggreen, Gblue
+	string tracename
+	///////////////SS edit NOv6 2018/////////////////
 	
 	For(i=0;i<vertDim;i+=1)
 		For(j=0;j<horDim;j+=1)
@@ -2007,6 +2027,15 @@ Function displayROIs()
 			endswitch
 			
 			Path = "root:ROI_analysis:ROI" + ROI + ":" + Scan + "_" + channel + "_ROI" + ROI + "_" + suffix
+			
+			/////////SS edit Nov6 2018/////////////////////////
+			tracename = Scan + "_"+channel+"_ROI" + ROI + "_dF"
+			ROINote = note ($("root:twoP_ROIS:"+ROI+"_x"))
+			Gred = NumberByKey("Red",ROINote)
+			Ggreen = NumberByKey("green",ROINote)
+			Gblue = NumberByKey("Blue",ROINote)
+			/////////SS edit Nov6 2018/////////////////////////
+			
 			
 			If(doAverages)
 				Path += "_avg"
@@ -2057,6 +2086,9 @@ Function displayROIs()
 			ModifyGraph axisEnab($bottomAxis)={startBottom,endBottom},freePos($leftAxis)={0,bottom_0},zero($leftAxis)=3,zeroThick($leftAxis)=0.5
 			ModifyGraph axisEnab($leftAxis)={startLeft,endLeft},manTick($leftAxis)={0,0.2,0,1},manMinor($leftAxis)={1,0}
 			DoUpdate
+			///////SS edit Nov6 2018///////////////////////////////////
+			Modifygraph rgb($tracename) = (Gred,Ggreen,Gblue) 
+			///////SS edit Nov6 2018/////////////////////////////////// 
 			
 			//Max and min left axis values
 			GetAxis/Q $leftAxis
@@ -2085,7 +2117,7 @@ Function displayROIs()
 		ModifyGraph freePos($bottomAxis)={0,kwFraction}
 	EndFor
 	
-	ModifyGraph margin(left)=28,margin(bottom)=28,margin(right)=7,margin(top)=7,gfSize=8,rgb=(0,0,0),axThick=0.5,standoff=0,btLen=2
+	ModifyGraph margin(left)=28,margin(bottom)=28,margin(right)=7,margin(top)=7,gfSize=8,axThick=0.5,standoff=0,btLen=2 //rgb=(0,0,0) SS edit Nov6 2018
 End
 
 Function/WAVE getDendriticMaskInit([theWave,noBuffer,channel])
