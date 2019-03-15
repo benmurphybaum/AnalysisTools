@@ -8,7 +8,7 @@ Function displayExtFuncHelp(theFunction)
 	Variable i
 	String char = ""
 	theFunction = "AT_" + theFunction
-	
+	 
 	String functionStr = ProcedureText(theFunction,0)
 	Variable pos1 = strsearch(functionStr,"//HELP",0) + 7
 	Variable pos2 = strsearch(functionStr,"//ENDHELP",0)
