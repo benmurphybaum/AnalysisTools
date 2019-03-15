@@ -2087,7 +2087,10 @@ Function displayROIs()
 			ModifyGraph axisEnab($leftAxis)={startLeft,endLeft},manTick($leftAxis)={0,0.2,0,1},manMinor($leftAxis)={1,0}
 			DoUpdate
 			///////SS edit Nov6 2018///////////////////////////////////
-			Modifygraph rgb($tracename) = (Gred,Ggreen,Gblue) 
+			//only modify if the color variables exist
+			If(numtype(Gred) != 2 && numtype(Ggreen) != 2 && numtype(Gblue) != 2)
+				Modifygraph rgb($tracename) = (Gred,Ggreen,Gblue) 
+			EndIf
 			///////SS edit Nov6 2018/////////////////////////////////// 
 			
 			//Max and min left axis values
