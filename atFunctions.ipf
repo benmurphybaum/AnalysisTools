@@ -2362,63 +2362,39 @@ Function/WAVE getDendriticMask([theWave,noBuffer])
 	return theMask
 End
 
+//masks an image with the specified mask wave from analysisTools
 Function maskScanData()
-	SVAR scanListStr = root:Packages:twoP:examine:scanListStr
-	String dataFolder = "root:twoP_Scans:" + StringFromList(0,scanListStr,";")
-	Variable numChannels,i
-	String scanPath = ""
 	
-	numChannels = 0
+	String theWaveList = getWaveNames()
+	Variable i,numWaves
 	
-	ControlInfo/W=analysis_tools ch1Check
-	If(V_Value)
-		numChannels = 1
-		scanPath = dataFolder + ":" + StringFromList(0,scanListStr,";") + "_ch1"
-	EndIf
+	numWaves = ItemsInList(theWaveList,";")
 	
-	ControlInfo/W=analysis_tools ch2Check
-	If(V_Value)
-		numChannels += 1
-	EndIf
+	//get the mask wave
+	ControlInfo/W=analysis_tools maskListPopUp
+	Wave theMask = $S_Value
 	
-	If(numChannels == 0)
-		Abort "Must select a channel"
-	EndIf
+	ControlInfo/W=analysis_tools overwrite
+	Variable overwrite = V_Value
 	
-	print "-------"
-	
-	//Loop through channels
-	For(i=0;i<numChannels;i+=1)
-		//If scanPath isn't assigned and we haven't aborted yet, it must be ch2
-		If(!strlen(scanPath) || i > 0)
-			scanPath = dataFolder + ":" + StringFromList(0,scanListStr,";") + "_ch2"
-		EndIf
-
-		//Can we find the wave?
-		If(DataFolderExists(dataFolder))
-			SetDataFolder $dataFolder
+	//Make wave to hold the masked scan
+	For(i=0;i<numWaves;i+=1)
+		SetDataFolder GetWavesDataFolder($StringFromList(i,theWaveList,";"),1)
+		
+		//get the scan and determine overwriting
+		If(overwrite)
+			Wave maskedScan = $StringFromList(i,theWaveList,";")
 		Else
-			Abort "Couldn't find the wave: " + scanPath
+			Wave theWave = $StringFromList(i,theWaveList,";")
+			String maskedScanName = StringFromList(i,theWaveList,";") + "_msk"
+			Duplicate/O theWave,$maskedScanName
+			Wave maskedScan = $maskedScanName
 		EndIf
-	
-		If(WaveExists($scanPath))
-			Wave theWave = $scanPath
-		Else
-			Abort "Couldn't find the wave: " + scanPath
-		EndIf
-	
-		ControlInfo/W=analysis_tools maskListPopUp
-		Wave theMask = $S_Value
 		
-		//Make wave to hold the masked scan
-		String maskedScanName = NameOfWave(theWave) + "_msk"
-		Duplicate/O theWave,$maskedScanName
-		Wave maskedScan = $maskedScanName
-		
-		maskedScan = theWave[p][q][r] * theMask[p][q][0]
-		
-		print "Scan " + scanPath + " has been masked using " + S_Value
+		maskedScan = (theMask[p][q][0] == 1) ? maskedScan[p][q][r] : nan
+		print StringFromList(i,theWaveList,";") + " has been masked using " + S_Value
 	EndFor
+		
 End
 
 Function maxLayer(theWave)
@@ -6188,24 +6164,17 @@ Function/S exportWaves()
 			return errStr
 		EndIf
 		
-		Variable count,col
-		count = 0
+		Variable col
 		col = 0
+		
 		For(i=0;i<xSize;i+=1)
 			For(j=0;j<ySize;j+=1)
-				col = count * ySize + j
-				data[][col] = theWave[i][j][p]
+				MatrixOP/O/FREE theBeam = beam(theWave,i,j)
+				MultiThread data[][col] = theBeam[p]
+				col += 1
 			EndFor
-			count += 1
 		EndFor
-		
-		//delete NaN columns
-		For(j=0;j<DimSize(data,1);j+=1)
-			If(numType(data[0][j]) == 2)
-				DeletePoints/M=1 j,1,data 
-			EndIf
-		EndFor
-		print "hi"	
+
 	Else
 		//series of 1D waves for denoising
 		For(i=0;i<numWaves;i+=1)
@@ -6238,7 +6207,7 @@ Function/S exportWaves()
 	//Cleanup
 	KillWindow/Z denoiseData
 	KillWaves/Z data
-	
+		
 	String os = IgorInfo(2)
 	
 	strswitch(os)
@@ -6276,8 +6245,8 @@ Function/S exportWaves()
 	
 			ExecuteScriptText script
 			
-			//Wait 4 second for the applescript to run in background
-			Sleep/S 10
+			//Wait for python to finish, then proceed
+			DoAlert 0,"Wait for Python to finish, then click OK"
 			
 			errStr = S_Value
 			
@@ -6324,7 +6293,7 @@ Function/S importWaves(list,outFolder,overwrite)
 	//Load waves
 	If(dims == 3)
 		//load as a matrix if it was a scan
-		LoadWave/Q/P=folderPath/J/A/M "denoiseData.csv"   
+		LoadWave/Q/P=folderPath/J/M/U={0,0,1,0} "denoiseData.csv"   
 		
 		//Denoised wave that was loaded
 		SetDataFolder saveDF
@@ -6349,38 +6318,30 @@ Function/S importWaves(list,outFolder,overwrite)
 			SetDataFolder $(df + outFolder)
 		EndIf
 		
-		//duplicate the loaded data into a temporary working wave
-		//redimension original into the correct shape for the denoised scan
-	
+		//make output 2D wave
+		
 		If(overwrite)
-			Duplicate/O newWave,$NameOfWave(oldWave)
+			Make/O/N=(xSize,ySize,zSize) $NameOfWave(oldWave)
 			Wave outWave = $NameOfWave(oldWave)
-			DeletePoints 0,1,newWave
-			Redimension/N=(xSize,ySize,zSize) outWave
+			MultiThread outWave = 0
 		Else
-			Duplicate/O newWave,$(NameOfWave(oldWave) + "_denoise")
+			Make/O/N=(xSize,ySize,zSize) $(NameOfWave(oldWave) + "_denoise")
 			Wave outWave = $(NameOfWave(oldWave) + "_denoise")
-			DeletePoints 0,1,newWave
-			Redimension/N=(xSize,ySize,zSize) outWave
+			MultiThread outWave = 0
 		EndIf
 		
 		//Reorganize the rows/cols/frames into the new wave
 		Variable col = 0
 		Variable count = 0
-		
-		//testing
-		Make/FREE/N=(zSize) temp,oldTemp
-		
+				
 		For(i=0;i<DimSize(outWave,0);i+=1)
 			For(j=0;j<DimSize(outWave,1);j+=1)
 				col = count * ySize + j
-				temp = newWave[r][col]
-				oldTemp = oldWave[r][col]
 				outWave[i][j][] = newWave[r][col]
 			EndFor
 			count += 1
 		EndFor
-		
+		KillWaves/Z newWave
 	Else
 		LoadWave/Q/P=folderPath/J/A "denoiseData.csv"   
 	
@@ -6572,4 +6533,57 @@ Function mapThresh()
 	
 	Variable dur = StopMSTimer(timer) / (1e6)
 	print "Applied threshold (" + num2str(threshold) + ") to " + NameOfWave(theWave) + "..." + num2str(dur) + " s"
+End
+
+//Opens a dynamic ROI window to use on any 3D scan instead of just designated scans (2PLSM)
+Function doDynamicROI()
+	
+	//Get the waves
+	String waveNameList = getWaveNames()
+	
+	//Only use the first wave in the list if multiple waves are specified
+	Wave theImage = $StringFromList(0,waveNameList)
+	If(!WaveExists(theImage))
+		return -1
+	EndIf
+	
+	//Make a free max projection of the wave for viewing purposes
+	//set outWave to first frame of the input wave
+	Make/O/N=(DimSize(theImage,0),DimSize(theImage,1)) root:Packages:analysisTools:maxProj
+	Wave maxProj = root:Packages:analysisTools:maxProj
+	maxProj = theImage[p][q][0]
+	
+	//max projection
+	Variable j,frames = DimSize(theImage,2)
+	For(j=0;j<frames;j+=1)
+		//MultiThread maxProj = (theImage[p][q][j] > maxProj[p][q]) ? theImage[p][q][j] : maxProj[p][q]
+		MultiThread maxProj += theImage[p][q][j]
+	EndFor
+	
+	maxProj /= frames
+		
+	//Set note in maxProj to reference the original 3D wave
+	Note/K maxProj,NameOfWave(theImage)
+	
+	//Get dynamic ROI wave
+	If(!WaveExists(root:Packages:analysisTools:dynamicROIWave))
+		Make/O root:Packages:analysisTools:dynamicROIWave
+	EndIf
+	
+	Wave dROI = root:Packages:analysisTools:dynamicROIWave
+	
+	//Display dynamic ROI wave outside of top right corner of analysis toolbox
+	DoWindow dynamicROI
+	If(!V_flag)
+		GetWindow/Z analysis_tools wsize
+		Display/K=1/W=(V_right,V_top,V_right + 360,V_top + 200)/N=dynamicROI dROI as "Dynamic ROI"	
+	EndIf
+	
+	//Display max projection
+	Display/K=1/W=(V_right,V_top+220,V_right + 720,V_top + 520)/N=maxProjection
+	AppendImage/W=maxProjection maxProj
+	
+	//Set the window hook function
+	SetWindow maxProjection,hook(droiHook) = dROI_Hook
+
 End

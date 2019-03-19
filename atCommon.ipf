@@ -3876,3 +3876,95 @@ Function matchScale(testWave,refWave[,ignoreDims])
 		EndIf
 	EndIf
 End
+
+//Dynamic ROI window hook function
+Function dROI_Hook(s)
+	STRUCT WMWinHookStruct &s
+	
+	Variable hookResult = 0
+	Variable xPix,yPix,size,left,right,top,bottom,i,j,xVal,yVal,leftAxis,rightAxis,bottomAxis,topAxis
+	Wave dROI = root:Packages:analysisTools:dynamicROIWave
+	
+	If(!WaveExists(dROI))
+		return -1
+	EndIf
+	
+	//projection and the original 3D image
+	Wave maxProj = root:Packages:analysisTools:maxProj
+   Wave theImage = $note(maxProj)
+   
+   If(!WaveExists(maxProj))
+   	return -1
+   EndIf
+    
+   If(!WaveExists(theImage))
+   	return -1
+   EndIf
+   
+	//diameter of the beam
+	ControlInfo/W=analysis_tools dynamicROI_size
+	size = V_Value
+
+	//check if mouse is over image
+	xVal = AxisValFromPixel("maxProjection","bottom",s.mouseLoc.h)
+	yVal = AxisValFromPixel("maxProjection","left",s.mouseLoc.v)
+	
+	//Is mouse within axis range?
+	GetAxis/W=maxProjection/Q bottom
+	If(xVal - DimDelta(maxProj,0)*0.5*size < V_min || xVal + DimDelta(maxProj,0)*0.5*size> V_max)
+		DrawAction/L=UserFront/W=maxProjection delete
+		return -1
+	EndIf
+	
+	GetAxis/W=maxProjection/Q left
+	If(yVal - DimDelta(maxProj,1)*0.5*size < V_min || yVal + DimDelta(maxProj,1)*0.5*size> V_max)
+		DrawAction/L=UserFront/W=maxProjection delete
+		return - 1
+	EndIf
+	
+	//convert axis value to pixels
+	xPix = ScaleToIndex(maxProj,xVal,0)
+	yPix = ScaleToIndex(maxProj,yVal,0)
+	
+	//edges of the ROI
+	left = round(xPix - .5*size) 
+	right = left + size
+	top = round(yPix - .5*size) 
+	bottom = top + size
+	
+	leftAxis = IndexToScale(maxProj,left,0)
+	rightAxis = IndexToScale(maxProj,right,0)
+	topAxis = IndexToScale(maxProj,top,1)
+	bottomAxis = IndexToScale(maxProj,bottom,1)
+	
+	switch(s.eventCode)
+		case 0: //activate
+			break
+		case 1: //deactivate
+			break
+		case 4: //mouse moved
+			//Correctly size the dynamic ROI wave to the number of frames in the image
+			Redimension/N=(DimSize(theImage,2)) dROI
+			dROI = 0
+			
+			//Draw for showing the ROI
+			SetDrawLayer/W=maxProjection/K UserFront
+			SetDrawEnv/W=maxProjection xCoord=bottom,yCoord=left,fillfgc=(0,35000,50000,25000),linethick=0
+			//draw in window absolute coordinates
+			DrawRect/W=maxProjection leftAxis,topAxis,rightAxis,bottomAxis
+			Variable numPixels = 0
+			
+			For(i=left;i<right;i+=1)
+				For(j=top;j<bottom;j+=1)
+					MatrixOP/FREE temp = beam(theImage,i,j)
+					If(numtype(temp[0]) == 2) //is nan
+						continue
+					EndIf
+					numPixels +=1
+					dROI += temp
+				EndFor
+			EndFor
+			dROI /= numPixels
+			break
+	endswitch
+End

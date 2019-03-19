@@ -64,10 +64,10 @@ Function CreatePackages()
 	Make/O/T/N=(1,2) root:Packages:analysisTools:packageTable
 	Wave/T packageTable = root:Packages:analysisTools:packageTable
 	packageTable[0][0] = "Calcium Imaging"
-	packageTable[0][1] =  "-------Basic-------;Max Proj;"//use ------ Section ------ to divide categories within the package 
+	packageTable[0][1] =  "-------Basic-------;Max Project;"//use ------ Section ------ to divide categories within the package 
 	packageTable[0][1] += "-------ROIs--------;MultiROI;ROI Grid;Filter ROI;Display ROIs;Kill ROI;Denoise;"
-	packageTable[0][1] += "-------Maps--------;df Map;Vector Sum Map;Line Profile;Apply Map Threshold;"
-	packageTable[0][1] += "-------Masks-------;Get Dendritic Mask;Mask Scan Data;"
+	packageTable[0][1] += "-------Maps--------;df Map;Vector Sum Map;Line Profile;Apply Map Threshold;Dynamic ROI;"
+	packageTable[0][1] += "-------Masks-------;Get Dendritic Mask;Mask Image;"
 	packageTable[0][1] += "----Registration---;Adjust Galvo Distortion;Register Image;Rescale Scans;"
 	
 	//packageTable[1][0] = "Basic Functions"
@@ -477,10 +477,12 @@ Function LoadAnalysisSuite([left,top])
 	//For ROI From Map
 	CheckBox avgResultsCheck win=analysis_tools,pos={10,81},size={50,20},title="Avg Results",disable=1
 	
-	//For Mask Scan Data
+	//For Mask Image
 	CheckBox maskAllFoldersCheck win=analysis_tools,pos={192,85},size={20,20},title="ALL",disable=1
 	PopUpMenu maskListPopUp win=analysis_tools,pos={10,85},size={150,20},title="Masks",value=GetMaskWaveList(),disable=1
 	
+	//For Dynamic ROI
+	SetVariable dynamicROI_size win=analysis_tools,pos={10,40},size={80,20},title="Diameter",value=_NUM:6,disable=1
 	//For Operation
 	
 	SetVariable waveMatch win=analysis_tools,pos={40,40},size={162,20},fsize=10,title="Match",value=_STR:"*",help={"Matches waves in the selected folder.\rLogical 'OR' can be used via '||'"},disable=1,proc=atSetVarProc
@@ -717,13 +719,6 @@ Function CreateControlLists(cmdList)
 	SVAR ctrlList_roiTuningCurve = root:Packages:analysisTools:ctrlList_roiTuningCurve
 	ctrlList_roiTuningCurve = "bslnStVar;bslnEndVar;peakStVar;peakEndVar;BatchsizeVar;numtrialsVar;DarkValueVar;SmoothBox;SmoothFilterVar;"
 	ctrlList_roiTuningCurve += "angleList;ch1Check;ch2Check;ratioCheck"
-
-	
-	//qkSpot
-	String/G root:Packages:analysisTools:ctrlList_qkSpot
-	SVAR ctrlList_qkSpot = root:Packages:analysisTools:ctrlList_qkSpot
-	ctrlList_qkSpot = "matPrefix;prefTheta;preFilterType;preFilter;preFilterSz;postFilterType;postFilter;postFilterSz;bslnStart;peakStart;bslnEnd;peakEnd;"
-	ctrlList_qkSpot +=	"subSlider;subDisplay;inflSlider;inflDisplay;runQkSpot;angleList"
 	
 	//Analysis tab control group
 	String/G root:Packages:analysisTools:ctrlList_analysisTab
@@ -753,10 +748,15 @@ Function CreateControlLists(cmdList)
 	SVAR ctrlList_getDendriticMask = root:Packages:analysisTools:ctrlList_getDendriticMask
 	ctrlList_getDendriticMask = "ch1Check;ch2Check;maskThreshold;mask3DCheck"
 	
-	//Mask Scan Data
-	String/G root:Packages:analysisTools:ctrlList_maskScanData
-	SVAR ctrlList_maskScanData = root:Packages:analysisTools:ctrlList_maskScanData
-	ctrlList_maskScanData = "ch1Check;ch2Check;maskListPopUp"
+	//Mask Image
+	String/G root:Packages:analysisTools:ctrlList_maskImage
+	SVAR ctrlList_maskImage = root:Packages:analysisTools:ctrlList_maskImage
+	ctrlList_maskImage = "extFuncDS;extFuncChannelPop;extFuncDSListBox;maskListPopUp;overwriteCheck"
+	
+	//Dynamic ROI
+	String/G root:Packages:analysisTools:ctrlList_dynamicROI
+	SVAR ctrlList_dynamicROI = root:Packages:analysisTools:ctrlList_dynamicROI
+	ctrlList_dynamicROI = "extFuncDS;extFuncChannelPop;extFuncDSListBox;dynamicROI_size"
 	
 	//Operation
 	String/G root:Packages:analysisTools:ctrlList_operation
@@ -910,8 +910,8 @@ Function ChangeControls(currentCmd,prevCmd)
 		case "Get Dendritic Mask":
 			SVAR ctrlList = root:Packages:analysisTools:ctrlList_getDendriticMask
 			break
-		case "Mask Scan Data":
-			SVAR ctrlList = root:Packages:analysisTools:ctrlList_maskScanData
+		case "Mask Image":
+			SVAR ctrlList = root:Packages:analysisTools:ctrlList_maskImage
 			break
 		case "Operation":
 			SVAR ctrlList = root:Packages:analysisTools:ctrlList_operation
@@ -933,6 +933,9 @@ Function ChangeControls(currentCmd,prevCmd)
 			break
 		case "Vector Sum Map":
 			SVAR ctrlList = root:Packages:analysisTools:ctrlList_vectorSumMap
+			break
+		case "Dynamic ROI":
+			SVAR ctrlList = root:Packages:analysisTools:ctrlList_dynamicROI
 			break
 		case "Rescale Scans":
 			SVAR ctrlList = root:Packages:analysisTools:ctrlList_rescaleScans
@@ -978,7 +981,7 @@ Function ChangeControls(currentCmd,prevCmd)
 		case "Run Cmd Line":
 			SVAR ctrlList = root:Packages:analysisTools:ctrlList_runCmdLine
 			break
-		case "Max Proj":
+		case "Max Project":
 			SVAR ctrlList = root:Packages:analysisTools:ctrlList_maxProj
 			break
 		case "Apply Map Threshold":
@@ -1037,10 +1040,10 @@ Function ChangeControls(currentCmd,prevCmd)
 			break
 		case "Get Dendritic Mask":
 			SVAR ctrlList = root:Packages:analysisTools:ctrlList_getDendriticMask
-			runCmdStr = "getDendriticMaskInit()"
+			runCmdStr = "getDendriticMask()"
 			break
-		case "Mask Scan Data":
-			SVAR ctrlList = root:Packages:analysisTools:ctrlList_maskScanData
+		case "Mask Image":
+			SVAR ctrlList = root:Packages:analysisTools:ctrlList_maskImage
 			runCmdStr = "maskScanData()"
 			break
 		case "Operation":
@@ -1070,6 +1073,10 @@ Function ChangeControls(currentCmd,prevCmd)
 		case "Vector Sum Map":
 			SVAR ctrlList = root:Packages:analysisTools:ctrlList_vectorSumMap
 			runCmdStr = "VectorSumMap()"
+			break
+		case "Dynamic ROI":
+			SVAR ctrlList = root:Packages:analysisTools:ctrlList_dynamicROI
+			runCmdStr = "doDynamicROI()"
 			break
 		case "Rescale Scans":
 			SVAR ctrlList = root:Packages:analysisTools:ctrlList_rescaleScans
@@ -1127,7 +1134,7 @@ Function ChangeControls(currentCmd,prevCmd)
 			SVAR ctrlList = root:Packages:analysisTools:ctrlList_runCmdLine
 			runCmdStr = ""	//will resolve at run time
 			break
-		case "Max Proj":
+		case "Max Project":
 			SVAR ctrlList = root:Packages:analysisTools:ctrlList_maxProj
 			runCmdStr = "atMaxProj()"
 			break
@@ -1189,12 +1196,6 @@ Function ChangeControls(currentCmd,prevCmd)
 			CheckBox ch1Check,win=analysis_tools,pos={10,61}
 			CheckBox ch2Check,win=analysis_tools,pos={50,61}
 			CheckBox ratioCheck,win=analysis_tools,pos={90,61},value=0
-			break
-		case "Mask Scan Data":
-			PopUpMenu maskListPopUp win=analysis_tools,value=GetMaskWaveList()
-			CheckBox ch1Check,win=analysis_tools,pos={10,61}
-			CheckBox ch2Check,win=analysis_tools,pos={50,61}
-			CheckBox ratioCheck,win=analysis_tools,pos={90,61}
 			break
 		case "df Map":
 			PopUpMenu maskListPopUp win=analysis_tools,value=GetMaskWaveList()
@@ -1294,7 +1295,11 @@ Function ChangeControls(currentCmd,prevCmd)
 			DrawText/W=analysis_tools 255,117,"Data Sets:"
 			SetDrawLayer/W=analysis_tools ProgBack
 			break
+		case "Mask Image":
+			PopUpMenu maskListPopUp win=analysis_tools,value=GetMaskWaveList(),pos={20,50}
 		case "Denoise":
+		case "Max Project":
+		case "Dynamic ROI":
 		case "Duplicate/Rename":
 		case "Average":
 		case "Error":
@@ -1307,7 +1312,7 @@ Function ChangeControls(currentCmd,prevCmd)
 			break
 		default:
 				//return controls to default positions
-
+			PopUpMenu maskListPopUp win=analysis_tools,pos={10,85}
 			CheckBox ch1Check,win=analysis_tools,pos={10,127}
 			CheckBox ch2Check,win=analysis_tools,pos={50,127}
 			CheckBox ratioCheck,win=analysis_tools,pos={90,127}

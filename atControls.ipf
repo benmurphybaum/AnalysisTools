@@ -99,6 +99,10 @@ Function atButtonProc(ba) : ButtonControl
 						case "Duplicate/Rename":
 						case "Average":
 						case "Error":
+						case "Denoise":
+						case "Mask Image":
+						case "Max Project":
+						case "Apply Map Threshold":
 						case "Kill Waves":
 							SVAR wsDims = root:Packages:analysisTools:DataSets:wsDims
 							NVAR numWaveSets = root:Packages:analysisTools:DataSets:numWaveSets
@@ -850,6 +854,8 @@ Function atPopProc(pa) : PopupMenuControl
 						strswitch(pa.popStr)
 							case "Denoise":
 							case "Average":
+							case "Mask Image":
+							case "Dynamic ROI":
 							case "Error":
 							case "Kill Waves":
 							case "Run Cmd Line":
