@@ -1644,6 +1644,10 @@ Function gridROI()//theMask,size)
 	i = 0
 	j = 0
 	
+	Variable initROI = count
+	Variable numROIs = 0
+	String gridROIList = ""
+	
 	Do
 		gridY = 0
 		j = 0
@@ -1659,6 +1663,7 @@ Function gridROI()//theMask,size)
 				
 				//make into an ROI
 				ROIName = "grid" + num2str(count) + "_x"
+				gridROIList += "root:twoP_ROIS:" + ROIName + ";" //for making different colors
 				Make/O/N=5 $ROIName
 				Wave ROIx = $ROIName
 				ROIName = "grid" + num2str(count) + "_y"
@@ -1677,6 +1682,7 @@ Function gridROI()//theMask,size)
 				ROIy[4] = IndexToScale(theMask,j,1)
 					
 				count += 1
+				numROIs += 1
 			Else
 				grid_ROIMask[gridX][gridY] = 0
 			EndIf
@@ -1703,6 +1709,21 @@ Function gridROI()//theMask,size)
 	SetScale/I x,startX,endX,grid_ROIMask
 	SetScale/I y,startY,endY,grid_ROIMask
 	
+	//Set color of every grid ROI in existence
+	ControlInfo/W=analysis_tools colorROIs
+	SetDataFolder root:
+	ColorTab2Wave rainbow
+	Wave rainbowWave = root:M_Colors
+		
+	String r,g,b
+	Variable size = DimSize(rainbowWave,0)
+	For(i=0;i<numROIs;i+=1)
+		Variable index = round(i * (size-1)/numROIs)
+		r = num2str(rainbowWave[index][0])
+		g = num2str(rainbowWave[index][1])
+		b = num2str(rainbowWave[index][2])
+		Note/K/NOCR $StringFromList(i,gridROIList,";"),"WaveType:ROIsquare;Red:" + r + ";green:" + g + ";Blue:" + b + ";"
+	EndFor
 	//Cleanup 
 	KillWaves/Z theMask
 End
@@ -1971,11 +1992,16 @@ Function displayROIs()
 	
 	//Build ROI display
 	///////////////SS edit NOv6 2018/////////////////
-	Dowindow/F $WindowName
-	if(V_Flag) 
-	else	
-		Display/N = $windowname 
-	endif
+	If(strlen(WindowName))
+		Dowindow/F $WindowName
+		If(!V_Flag) 	
+			Display/N = $windowname 
+		EndIf
+	Else
+		WindowName = UniqueName("dispROI_",6,0)
+		Display/N=$WindowName as WindowName
+	EndIf	
+	
 	string ROINote
 	variable Gred, Ggreen, Gblue
 	string tracename
@@ -2029,7 +2055,7 @@ Function displayROIs()
 			Path = "root:ROI_analysis:ROI" + ROI + ":" + Scan + "_" + channel + "_ROI" + ROI + "_" + suffix
 			
 			/////////SS edit Nov6 2018/////////////////////////
-			tracename = Scan + "_"+channel+"_ROI" + ROI + "_dF"
+			tracename = Path
 			ROINote = note ($("root:twoP_ROIS:"+ROI+"_x"))
 			Gred = NumberByKey("Red",ROINote)
 			Ggreen = NumberByKey("green",ROINote)
@@ -2043,6 +2069,7 @@ Function displayROIs()
 			
 			Wave theWave = $Path
 			
+			//If can't find the wave, check if zeros have been buffered or not
 			If(!WaveExists(theWave))
 				//try wave name without buffered zeros, in case they have been removed
 				String str = StringFromList(1,Scan,"_")
@@ -2082,14 +2109,17 @@ Function displayROIs()
 			EndIf
 			
 			//Append trace to the graph
-			AppendToGraph/L=$leftAxis/B=$bottomAxis theWave
-			ModifyGraph axisEnab($bottomAxis)={startBottom,endBottom},freePos($leftAxis)={0,bottom_0},zero($leftAxis)=3,zeroThick($leftAxis)=0.5
-			ModifyGraph axisEnab($leftAxis)={startLeft,endLeft},manTick($leftAxis)={0,0.2,0,1},manMinor($leftAxis)={1,0}
-			DoUpdate
+			AppendToGraph/W=$WindowName/L=$leftAxis/B=$bottomAxis theWave
+			ModifyGraph/W=$WindowName axisEnab($bottomAxis)={startBottom,endBottom},freePos($leftAxis)={0,bottom_0},zero($leftAxis)=3,zeroThick($leftAxis)=0.5
+			ModifyGraph/W=$WindowName axisEnab($leftAxis)={startLeft,endLeft},manTick($leftAxis)={0,0.2,0,1},manMinor($leftAxis)={1,0}
+			//DoUpdate
 			///////SS edit Nov6 2018///////////////////////////////////
 			//only modify if the color variables exist
-			If(numtype(Gred) != 2 && numtype(Ggreen) != 2 && numtype(Gblue) != 2)
-				Modifygraph rgb($tracename) = (Gred,Ggreen,Gblue) 
+			ControlInfo/W=analysis_tools colorROIs
+			If(V_Value)
+				If(numtype(Gred) != 2 && numtype(Ggreen) != 2 && numtype(Gblue) != 2)
+					Modifygraph/W=$WindowName rgb($NameOfWave(theWave)) = (Gred,Ggreen,Gblue) 
+				EndIf
 			EndIf
 			///////SS edit Nov6 2018/////////////////////////////////// 
 			
@@ -2106,6 +2136,7 @@ Function displayROIs()
 		EndFor
 	EndFor
 	
+	
 	//Set all left axes to the same max and min
 	For(i=0;i<numVertAxes;i+=1)
 		leftAxis = "left_" + num2str(i)
@@ -2121,6 +2152,7 @@ Function displayROIs()
 	EndFor
 	
 	ModifyGraph margin(left)=28,margin(bottom)=28,margin(right)=7,margin(top)=7,gfSize=8,axThick=0.5,standoff=0,btLen=2 //rgb=(0,0,0) SS edit Nov6 2018
+	SetAxis/A
 End
 
 Function/WAVE getDendriticMaskInit([theWave,noBuffer,channel])

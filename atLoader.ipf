@@ -397,10 +397,12 @@ Function LoadAnalysisSuite([left,top])
 	PopUpMenu vertDisplayArrangementPopUp win=analysis_tools,pos={160,yPos},size={75,20},title="Vert. Arrange",value=#"root:Packages:analysisTools:arrangementOptions",disable=1
 	CheckBox dispAveragesCheck win=analysis_tools,pos={10,yPos+20},size={50,20},title="Averages",disable=1
 	SetVariable scanOrderROIdisplay win=analysis_tools,pos={10,yPos+40},size={175,20},title="Scan Order",value=_STR:"",disable=1
+	CheckBox colorROIs win=analysis_tools,pos={10, ypos+105},size = {75,20},title="Colors",disable=1
+	
 	//SetVariable roiOrderROIdisplay win=analysis_tools,pos={10,yPos+60},size={175,20},title="ROI Order",value=_STR:"",disable=1
 	
 	////////SS edit Nov6 2018/////////////////////
-	SetVariable GraphName win = analysis_tools, pos = {10, ypos+85}, size = {175,20}, title = "Graph Name", value=_STR:"Control8dir",disable=1
+	SetVariable GraphName win = analysis_tools, pos = {10, ypos+85}, size = {175,20}, title = "Graph Name", value=_STR:"",disable=1
 	////////SS edit Nov6 2018/////////////////////
 	
 	//for Get Dendritic Mask Function
@@ -734,7 +736,7 @@ Function CreateControlLists(cmdList)
 	String/G root:Packages:analysisTools:ctrlList_displayROIs
 	SVAR ctrlList_displayROIs = root:Packages:analysisTools:ctrlList_displayROIs
 	ctrlList_displayROIs = "horDisplayArrangementPopUp;vertDisplayArrangementPopUp;dispAveragesCheck;scanOrderROIdisplay;roiOrderROIdisplay;"
-	ctrlList_displayROIs += "presetAngleListPop;addPresetAngle;deletePresetAngle;ch1Check;ch2Check;ratioCheck;graphName" // SS edit Nov6 2018
+	ctrlList_displayROIs += "presetAngleListPop;addPresetAngle;deletePresetAngle;ch1Check;ch2Check;ratioCheck;graphName;colorROIs" // SS edit Nov6 2018
 	
 	//Registering scans that are distorted during bidirectional scanning
 	String/G root:Packages:analysisTools:ctrlList_adjustGalvoDistort
@@ -1264,7 +1266,7 @@ Function ChangeControls(currentCmd,prevCmd)
 		case "Display ROIs":
 			PopUpMenu presetAngleListPop,win=analysis_tools,pos={10,124}
 			Button addPresetAngle,win=analysis_tools,pos={140,124}
-			Button deletePresetAngle,win=analysis_tools,pos={156,124}
+			Button deletePresetAngle,win=analysis_tools,pos={165,124}
 			CheckBox ch1Check,win=analysis_tools,pos={10,39}
 			CheckBox ch2Check,win=analysis_tools,pos={50,39}
 			CheckBox ratioCheck,win=analysis_tools,pos={90,39}
