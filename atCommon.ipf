@@ -439,9 +439,11 @@ Function roiToImage()
 			blue = numberbykey ("Blue", note (roiXWave))
 			
 			//Automatically make cyan
-			red = 0
-			green = 65535
-			blue = 65535
+			If(numtype(red) == 2)
+				red = 0
+				green = 65535
+				blue = 65535
+			EndIf
 			
 			//Find which axes are being used
 			String xAxisName,yAxisName,flags,info
@@ -3117,8 +3119,14 @@ Function getCenter(ROItable,ROIFolder)
 		ROIStr = ROItable[i]
 		Wave xWave = $(ROIfolder + ":" + ROIStr + "_x")
 		Wave yWave = $(ROIfolder + ":" + ROIStr + "_y")
-		ROIx[i] = median(xWave)
-		ROIy[i] = median(yWave)
+		
+		If(DimSize(xWave,0) == 5) //square ROI
+			ROIx[i] = 0.5*(xWave[0] + xWave[2])
+			ROIy[i] = 0.5*(yWave[0] + yWave[2])
+		Else
+			ROIx[i] = median(xWave)
+			ROIy[i] = median(yWave)
+		EndIf
 	EndFor	
 End
 
