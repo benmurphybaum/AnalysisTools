@@ -551,6 +551,7 @@ Function LoadAnalysisSuite([left,top])
 	CheckBox optimizePosition win=analysis_tools,pos={84,60},size={60,20},title="Optimize Positions",disable=1
 	SetVariable pctOverlap win=analysis_tools,pos={196,61},size={80,20},title="% Overlap",value=_NUM:0,disable=1
 	SetVariable pixelThresholdPct win=analysis_tools,pos={196,87},size={95,20},title="% Threshold",value=_NUM:0,limits={0,100,1},disable=1
+	Button nudgeAll win=analysis_tools,pos={10,145},size={75,20},title="Nudge All",disable=1,proc=atButtonProc
 	
 	//For Filter ROI
 	PopUpMenu thresholdType win=analysis_tools,pos={10,156},size={140,20},title="Threshold Type",value="∆F/F;SNR",disable=1
@@ -811,7 +812,7 @@ Function CreateControlLists(cmdList)
 	//ROI Grid
 	String/G root:Packages:analysisTools:ctrlList_roiGrid
 	SVAR ctrlList_roiGrid = root:Packages:analysisTools:ctrlList_roiGrid
-	ctrlList_roiGrid = "maskListPopUp;gridSizeX;gridSizeY;overwriteGrid;ch1Check;ch2Check;pixelThresholdPct" 
+	ctrlList_roiGrid = "maskListPopUp;gridSizeX;gridSizeY;overwriteGrid;ch1Check;ch2Check;pixelThresholdPct;nudgeAll" 
 	
 	//Filter ROI
 	String/G root:Packages:analysisTools:ctrlList_filterROI

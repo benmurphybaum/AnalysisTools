@@ -4105,12 +4105,6 @@ Function GetLineProfile()
 End
 
 
-
-
-
-
-
-
 //Takes the distData waves, and correlates each ROI over trials with the ROIs in its distData wave. 
 //Appends that correlation value to the end of the distData wave
 Function correlateDistData()

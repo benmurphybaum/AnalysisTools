@@ -159,8 +159,45 @@ Function atButtonProc(ba) : ButtonControl
 					EndIf
 					ControlUpdate AT_cdf
 					break
-				case "nudgeROI":
-					NudgeROI()
+				case "nudgeAll":
+					ControlInfo/W=analysis_tools nudgeAll	
+									
+					strswitch(S_title)
+						case "Nudge All":
+							//switch to show 'Done' 
+							Button nudgeAll win=analysis_tools,title="Done"
+							NudgeROI()
+							break
+						case "Done":
+							//switch to show 'Nudge All' 
+							Button nudgeAll win=analysis_tools,title="Nudge All"
+							//shut down the hook function
+							//have to get the top graph this way, since the top window is technically the toolbox itself
+							String windows = WinList("*",";","WIN:1;VISIBLE:1")
+							String graphStr = StringFromList(0,windows,";")
+							String traceList = TraceNameList(graphStr,";",1)
+							SetWindow $graphStr hook(myHook) = $""
+							ModifyGraph/W=$graphStr quickDrag = 0
+							
+							//set the waves with new offsets
+							For(i=0;i<ItemsInList(traceList,";");i+=1)
+								String theTrace = StringFromList(i,traceList,";")
+								String info = TraceInfo(graphStr,theTrace,0)
+								String offsets = StringByKey("offset(x)",info,"=",";")
+								
+								Variable dx,dy
+								sscanf offsets,"{%g,%g}",dx,dy
+							
+								Wave roiX = $("root:twoP_ROIS:" + RemoveEnding(theTrace,"y") + "x")
+								Wave roiY = $("root:twoP_ROIS:" + theTrace)
+								
+								roiX += dx
+								roiY += dy
+								ModifyGraph/W=$graphStr offset($theTrace)={0,0}
+							EndFor
+							break
+					endswitch
+				
 					break
 				case "selectAll_Left":
 					//select all scans,ROIs,folders, or wave items

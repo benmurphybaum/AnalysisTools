@@ -329,125 +329,83 @@ Function AT_animateControlDrop(ctrlName,ctrlWin,controlHeight,tab,duration)
 	EndFor	
 End
 
+//Allows user to nudge all of the ROIs on the top graph at once
 Function NudgeROI()
-	WAVE/T ROIListWave = root:Packages:twoP:examine:ROIListWave
-	WAVE ROIListSelWave = root:Packages:twoP:examine:ROIListSelWave
+	String graphStr,windows 
+	Variable i,j
 	
-	SVAR ROIListStr = root:Packages:twoP:examine:ROIListStr
-	Variable i
+	//make globals for drag and drop functionality
+	Variable/G root:Packages:analysisTools:mouseDown
+	NVAR mouseDown = root:Packages:analysisTools:mouseDown
+	mouseDown = 0
 	
-	Wave selWave = ROIListSelWave
-	Wave/T listWave = ROIListWave
+	String/G root:Packages:analysisTools:dragROI
+	SVAR dragROI = root:Packages:analysisTools:dragROI
+	dragROI = ""
 	
-	//populate ROIListStr
-	ROIListStr = ""
-	For(i=0;i<DimSize(selWave,0);i+=1)
-		If(selWave[i] == 1)
-			ROIListStr += listWave[i] + ";"
-		Endif
-	EndFor
-					
-//Jamie's code for adding an ROI to the scanGraph if it exists
-	// If shift key was held down, then we are just plotting
-	//variable justPlot = ((ba.EventMod && 2) == 2)
-	SVAR curScan = root:packages:twoP:examine:curScan
-	if (cmpStr (curScan, "LiveWave") == 0)
-		SVAR scanStr = root:packages:twoP:Acquire:LiveModeScanStr
-	else
-		SVAR scanStr = $"root:twoP_Scans:" + curScan + ":" + curScan + "_info"
-		endif
-	// window to plot on
-	controlinfo/w=twoP_Controls ROIonWindowPopup
+	Make/O/N=4 root:Packages:analysisTools:mousePos
+	Wave mousePos = root:Packages:analysisTools:mousePos
+	mousePos = 0
+	
+	//have to get the top graph this way, since the top window is technically the toolbox itself
+	windows = WinList("*",";","WIN:1;VISIBLE:1")
+	graphStr = StringFromList(0,windows,";")
 
-	string onWindow = S_Value
+	SetWindow $graphStr hook(myHook) = nudgeHook
 	
-	doWindow/F $S_Value
-	if (!(V_Flag))
-		print "The selected graph no longer exists."
-		return 1
-	endif
-// check subwin for twoPScanGraph
-	if (cmpStr (onWindow, "twoPScanGraph") ==0)
-		NVAR ROIChan = root:packages:twoP:examine:roiChan
-		switch (ROIChan)
-			case 1:
-				onWindow = "twoPScanGraph#Gch1"
-				break
-			case 2:
-				onWindow = "twoPScanGraph#Gch2"
-				break
-			case 3:
-				onWindow = "twoPScanGraph#Gmrg"
-				break
-		endSwitch
-		// if selected channel is not displayed, just use first subwindow
-		if (WhichListItem(stringfromlist (1, onWindow, "#"), childWindowList (stringfromlist (0, onWindow, "#")), ";") == -1) // subwin not present
-			onWindow = "twoPScanGraph#" + stringFromList  (0, childWindowList (stringfromlist (0, onWindow, "#")))
-		endif
-	endif
-	// get a list of traces already on the graph, so they are not added 2x
-	string tracelist = tracenamelist (onWIndow, ";", 1)
-	// find selected ROIs, append them (if not already appended) and set the "drag" option
-	// also copy list of drag traces into a global string
-	WAVE/T ROIListWave = root:Packages:twoP:examine:ROIListWave
-	WAVE ROIListSelWave = root:Packages:twoP:examine:ROIListSelWave
-	variable ii, numroi = numpnts (ROIListWave), red, green, blue
-	string roiStr
-	string/G root:packages:twoP:examine:ROInudgeList =""
-	SVAR ROInudgeList = root:packages:twoP:examine:ROInudgeList 
-	for (ii =0; ii < numRoi; ii += 1)
-		if (ROIListSelWave [ii] == 0)
-			continue
-		endif
-		roiStr = ROIListWave [ii]
-		ROInudgeList += roiStr + ";"
-		// display ROI if it is not already displayed
-		if (WhichListItem(roiStr + "_y", tracelist, ";") == -1)
-			WAVE roiXWave = $ "Root:twoP_ROIs:" + roiStr + "_x"
-			WAVE roiYWave = $ "Root:twoP_ROIs:" + roiStr + "_y"
-			if (!((WaveExists (roiXWave)) && (WaveExists (roiYWave))))
-				continue
-			endif
-			red = numberbykey ("Red", note (roiXWave))
-			green = numberbykey ("Green", note (roiXWave))
-			blue = numberbykey ("Blue", note (roiXWave))
+End
+
+Function nudgeHook(s)
+	STRUCT WMWinHookStruct &s
+	
+	NVAR mouseDown = root:Packages:analysisTools:mouseDown
+	SVAR dragROI = root:Packages:analysisTools:dragROI
+	Variable hookResult = 0
+	Variable dx,dy,newX,newY
+	Wave mousePos = root:Packages:analysisTools:mousePos
+	String graphStr = "",windows="",theROI = "",info = ""
+	
+	//have to get the top graph this way, since the top window is technically the toolbox itself
+	windows = WinList("*",";","WIN:1;VISIBLE:1")
+	graphStr = StringFromList(0,windows,";")
+	
+	switch(s.eventCode)
+		case 0: //activate
+			break
+		case 1: //deactivate
+			break
+		case 3: //mouse down
+			//first two rows are for the start position
+		//	mousePos[0] = AxisValFromPixel(graphStr,"bottom",s.mouseLoc.h)
+			//mousePos[1] = AxisValFromPixel(graphStr,"left",s.mouseLoc.v)
 			
-			//Automatically make cyan
-			red = 0
-			green = 65535
-			blue = 65535
+			String imageStr = StringFromList(0,ImageNameList(graphStr,";"),";")
+			Wave theImage = ImageNameToWaveRef(graphStr,imageStr)
 			
-			//Find which axes are being used
-			String xAxisName,yAxisName,flags,info
-			info = TraceInfo(onWindow,StringFromList(0,tracelist,";"),0)
-			xAxisName = StringByKey("XAXIS",info,":",";")
-			yAxisName = StringByKey("YAXIS",info,":",";")
-			flags = StringByKey("AXISFLAGS",info,":",";")
-			If(StringMatch(flags,"*/T*") && StringMatch(flags,"*/R*"))
-				appendtograph /W=$onWindow/C=(red, green, blue)/T=$xAxisName/R=$yAxisName RoiYWave vs RoiXwave
-			ElseIf(StringMatch(flags,"*/T*"))
-				appendtograph /W=$onWindow/C=(red, green, blue)/T=$xAxisName RoiYWave vs RoiXwave
-			ElseIf(StringMatch(flags,"*/R*"))
-				appendtograph /W=$onWindow/C=(red, green, blue)/R=$yAxisName RoiYWave vs RoiXwave
+			//axis position in pixels
+			Variable xPix = ScaleToIndex(theImage,mousePos[0],0)
+			Variable yPix = ScaleToIndex(theImage,mousePos[1],1)
+			
+			//what ROI did the mouse click on?
+			info = TraceFromPixel(s.mouseLoc.h,s.mouseLoc.v,"DELTAX:3;DELTAY:3")
+			If(strlen(info))
+				mouseDown = 1
+				dragROI = StringByKey("TRACE",info,":",";")
+				//set to quick drag
+				ModifyGraph/W=$graphStr quickDrag($dragROI) = 1
+				If(!strlen(dragROI))
+					//reset everything if ROI was not clicked
+					mouseDown = 0
+					dragROI = ""
+				EndIf
 			Else
-				appendtograph /W=$onWindow/C=(red, green, blue) RoiYWave vs RoiXwave
+				//reset everything if ROI was not clicked
+				mouseDown = 0
+				dragROI = ""
 			EndIf
-			
-			//appendtograph /W=$onWindow/C=(red, green, blue) RoiYWave vs RoiXwave
-		endif
-	
-					
-		// set quickDrag for selected rois
-					
-		//	if (!(justPlot))
-		//		modifyGraph/W=$onWindow quickDrag ($roiStr + "_y")=1
-		//		String/G root:packages:twoP:examine:NudgeOnWindow = onWindow
-		//	endif
-	endfor
-	//if not just plotting, set nudge button to new title and new procedure
-	//	if (!(justPlot))
-	//			Button ROINudgeButton win=twoP_Controls, title = "Done", proc = NQ_RoiNudgeDoneButtonProc, fColor=(65535,0,0)
-	//	endif
+			break
+	endswitch	
+		
 End
 
 Function SetWaveNote(theWave,paramListStr)
