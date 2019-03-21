@@ -604,9 +604,9 @@ Function LoadAnalysisSuite([left,top])
 	//CheckBox NotSeqBox,win = analysis_tools,pos={170,yPos},title="Not in sequence?",proc = atCheckProc
 	
 	yPos+=20
-	CheckBox ch1Check,win=analysis_tools,pos={60,yPos},title="Ch1"
-	CheckBox ch2Check,win=analysis_tools,pos={100,yPos},title="Ch2"
-	CheckBox ratioCheck,win=analysis_tools,pos={140,yPos},title="Ratio"
+	CheckBox ch1Check,win=analysis_tools,pos={70,yPos},title="Ch1"
+	CheckBox ch2Check,win=analysis_tools,pos={110,yPos},title="Ch2"
+	CheckBox ratioCheck,win=analysis_tools,pos={150,yPos},title="Ratio"
 	PopUpMenu dFAbsMenu,win=analysis_tools,pos={10,yPos},value="∆;Abs",title="",disable=1
 		
 	yPos += 20
@@ -1320,9 +1320,9 @@ Function ChangeControls(currentCmd,prevCmd)
 			SetVariable bslnEndVar win=analysis_tools,pos={15,85}
 			SetVariable peakStVar win=analysis_tools,pos={120,65}
 			SetVariable peakEndVar win=analysis_tools,pos={125,85}
-			CheckBox ch1Check,win=analysis_tools,pos={60,127}
-			CheckBox ch2Check,win=analysis_tools,pos={100,127}
-			CheckBox ratioCheck,win=analysis_tools,pos={140,127}
+			CheckBox ch1Check,win=analysis_tools,pos={70,127}
+			CheckBox ch2Check,win=analysis_tools,pos={110,127}
+			CheckBox ratioCheck,win=analysis_tools,pos={150,127}
 			SetVariable angleList,win=analysis_tools,pos={10,186}
 			PopUpMenu presetAngleListPop,win=analysis_tools,pos={10,205}
 			Button addPresetAngle,win=analysis_tools,pos={140,205}
