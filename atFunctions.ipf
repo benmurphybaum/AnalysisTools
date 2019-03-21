@@ -921,7 +921,9 @@ Function GetROI()
 				
 				/////////////////SS edit 30 Dec 2018////////////////////
 				Note/K $dFname // kill existing note
-				Note $dFname,"peak:"+num2str(getPeakVals(dF,pkStart,pkEnd,pkWindow))+";"
+				WaveStats/Q/R=(bslnStart,bslnEnd) DF
+				
+				Note $dFname,"peak:"+num2str(getPeakVals(dF,pkStart,pkEnd,pkWindow))+";"+"PeakTime:"+num2str(getPeakVals(dF,pkStart,pkEnd,pkWindow,getPkTm = 1))+";"+"bslnSD:"+num2str(V_sdev)+";"+"WindowAVG:"+num2str(V_avg)+";"
 				
 				/////////////////SS edit 30 Dec 2018////////////////////
 				
