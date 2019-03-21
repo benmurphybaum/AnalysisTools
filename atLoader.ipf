@@ -349,7 +349,7 @@ Function LoadAnalysisSuite([left,top])
 	
 	//ROI list Panel
 	ListBox/Z ROIListBox win=analysis_tools#scanListPanel,size={80,height-75},pos={150,30},mode=4,selWave=ROIListSelWave,listWave=ROIListWave,proc=atListBoxProc
-	Button nudgeROI win=analysis_tools#scanListPanel,size={40,20},pos={190,height-40},title="DISP",proc=atButtonProc
+	Button dispROI win=analysis_tools#scanListPanel,size={40,20},pos={190,height-40},title="DISP",proc=atButtonProc
 	Button selectAll_Right win=analysis_tools#scanListPanel,size={30,20},pos={150,height-40},title="ALL",proc=atButtonProc
 	
 	//Extra list box for folders, so I can switch between browsing and scan list
@@ -812,7 +812,7 @@ Function CreateControlLists(cmdList)
 	//ROI Grid
 	String/G root:Packages:analysisTools:ctrlList_roiGrid
 	SVAR ctrlList_roiGrid = root:Packages:analysisTools:ctrlList_roiGrid
-	ctrlList_roiGrid = "maskListPopUp;gridSizeX;gridSizeY;overwriteGrid;ch1Check;ch2Check;pixelThresholdPct;nudgeAll" 
+	ctrlList_roiGrid = "maskListPopUp;gridSizeX;gridSizeY;overwriteGrid;ch1Check;ch2Check;pixelThresholdPct" 
 	
 	//Filter ROI
 	String/G root:Packages:analysisTools:ctrlList_filterROI

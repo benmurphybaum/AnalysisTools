@@ -199,6 +199,10 @@ Function atButtonProc(ba) : ButtonControl
 					endswitch
 				
 					break
+				case "dispROI":
+					roiToImage()
+					break
+							
 				case "selectAll_Left":
 					//select all scans,ROIs,folders, or wave items
 					selectALL(ba.ctrlName,whichList)

@@ -355,6 +355,130 @@ Function NudgeROI()
 	
 End
 
+Function roiToImage()
+	WAVE/T ROIListWave = root:Packages:twoP:examine:ROIListWave
+	WAVE ROIListSelWave = root:Packages:twoP:examine:ROIListSelWave
+	
+	SVAR ROIListStr = root:Packages:twoP:examine:ROIListStr
+	Variable i
+	
+	Wave selWave = ROIListSelWave
+	Wave/T listWave = ROIListWave
+	
+	//populate ROIListStr
+	ROIListStr = ""
+	For(i=0;i<DimSize(selWave,0);i+=1)
+		If(selWave[i] == 1)
+			ROIListStr += listWave[i] + ";"
+		Endif
+	EndFor
+					
+//Jamie's code for adding an ROI to the scanGraph if it exists
+	// If shift key was held down, then we are just plotting
+	//variable justPlot = ((ba.EventMod && 2) == 2)
+	SVAR curScan = root:packages:twoP:examine:curScan
+	if (cmpStr (curScan, "LiveWave") == 0)
+		SVAR scanStr = root:packages:twoP:Acquire:LiveModeScanStr
+	else
+		SVAR scanStr = $"root:twoP_Scans:" + curScan + ":" + curScan + "_info"
+		endif
+	// window to plot on
+	controlinfo/w=twoP_Controls ROIonWindowPopup
+
+	string onWindow = S_Value
+	
+	doWindow/F $S_Value
+	if (!(V_Flag))
+		print "The selected graph no longer exists."
+		return 1
+	endif
+// check subwin for twoPScanGraph
+	if (cmpStr (onWindow, "twoPScanGraph") ==0)
+		NVAR ROIChan = root:packages:twoP:examine:roiChan
+		switch (ROIChan)
+			case 1:
+				onWindow = "twoPScanGraph#Gch1"
+				break
+			case 2:
+				onWindow = "twoPScanGraph#Gch2"
+				break
+			case 3:
+				onWindow = "twoPScanGraph#Gmrg"
+				break
+		endSwitch
+		// if selected channel is not displayed, just use first subwindow
+		if (WhichListItem(stringfromlist (1, onWindow, "#"), childWindowList (stringfromlist (0, onWindow, "#")), ";") == -1) // subwin not present
+			onWindow = "twoPScanGraph#" + stringFromList  (0, childWindowList (stringfromlist (0, onWindow, "#")))
+		endif
+	endif
+	// get a list of traces already on the graph, so they are not added 2x
+	string tracelist = tracenamelist (onWIndow, ";", 1)
+	// find selected ROIs, append them (if not already appended) and set the "drag" option
+	// also copy list of drag traces into a global string
+	WAVE/T ROIListWave = root:Packages:twoP:examine:ROIListWave
+	WAVE ROIListSelWave = root:Packages:twoP:examine:ROIListSelWave
+	variable ii, numroi = numpnts (ROIListWave), red, green, blue
+	string roiStr
+	string/G root:packages:twoP:examine:ROInudgeList =""
+	SVAR ROInudgeList = root:packages:twoP:examine:ROInudgeList 
+	for (ii =0; ii < numRoi; ii += 1)
+		if (ROIListSelWave [ii] == 0)
+			continue
+		endif
+		roiStr = ROIListWave [ii]
+		ROInudgeList += roiStr + ";"
+		// display ROI if it is not already displayed
+		if (WhichListItem(roiStr + "_y", tracelist, ";") == -1)
+			WAVE roiXWave = $ "Root:twoP_ROIs:" + roiStr + "_x"
+			WAVE roiYWave = $ "Root:twoP_ROIs:" + roiStr + "_y"
+			if (!((WaveExists (roiXWave)) && (WaveExists (roiYWave))))
+				continue
+			endif
+			red = numberbykey ("Red", note (roiXWave))
+			green = numberbykey ("Green", note (roiXWave))
+			blue = numberbykey ("Blue", note (roiXWave))
+			
+			//Automatically make cyan
+			red = 0
+			green = 65535
+			blue = 65535
+			
+			//Find which axes are being used
+			String xAxisName,yAxisName,flags,info
+			info = TraceInfo(onWindow,StringFromList(0,tracelist,";"),0)
+			xAxisName = StringByKey("XAXIS",info,":",";")
+			yAxisName = StringByKey("YAXIS",info,":",";")
+			flags = StringByKey("AXISFLAGS",info,":",";")
+			If(StringMatch(flags,"*/T*") && StringMatch(flags,"*/R*"))
+				appendtograph /W=$onWindow/C=(red, green, blue)/T=$xAxisName/R=$yAxisName RoiYWave vs RoiXwave
+			ElseIf(StringMatch(flags,"*/T*"))
+				appendtograph /W=$onWindow/C=(red, green, blue)/T=$xAxisName RoiYWave vs RoiXwave
+			ElseIf(StringMatch(flags,"*/R*"))
+				appendtograph /W=$onWindow/C=(red, green, blue)/R=$yAxisName RoiYWave vs RoiXwave
+			Else
+				appendtograph /W=$onWindow/C=(red, green, blue) RoiYWave vs RoiXwave
+			EndIf
+			
+			//appendtograph /W=$onWindow/C=(red, green, blue) RoiYWave vs RoiXwave
+		endif
+	
+					
+		// set quickDrag for selected rois
+					
+		//	if (!(justPlot))
+		//		modifyGraph/W=$onWindow quickDrag ($roiStr + "_y")=1
+		//		String/G root:packages:twoP:examine:NudgeOnWindow = onWindow
+		//	endif
+	endfor
+	//if not just plotting, set nudge button to new title and new procedure
+	//	if (!(justPlot))
+	//			Button ROINudgeButton win=twoP_Controls, title = "Done", proc = NQ_RoiNudgeDoneButtonProc, fColor=(65535,0,0)
+	//	endif
+End
+
+
+End
+
 Function nudgeHook(s)
 	STRUCT WMWinHookStruct &s
 	

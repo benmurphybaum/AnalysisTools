@@ -164,7 +164,7 @@ Function flipLists(whichList)
 			ListBox ROIListBox win=analysis_tools#scanListPanel,disable=0
 			
 			//Show some controls
-			Button nudgeROI win=analysis_tools#scanListPanel,disable = 0
+			Button dispROI win=analysis_tools#scanListPanel,disable = 0
 			Button atBrowseButton win=analysis_tools#scanListPanel,title="Browse"
 			
 			//Change some control assignments
@@ -186,7 +186,7 @@ Function flipLists(whichList)
 			
 			//Hide some controls
 			ListBox/Z WaveListBox win=analysis_tools#scanListPanel,selWave=selWave,listWave=scanListWave,proc=atListBoxProc,disable=1
-			Button nudgeROI win=analysis_tools#scanListPanel,disable = 1			
+			Button dispROI win=analysis_tools#scanListPanel,disable = 1			
 			
 			//Show some controls
 			Button atBrowseButton win=analysis_tools#scanListPanel,title="Scans"
@@ -752,7 +752,7 @@ Function GetROI()
 				
 				xSeed = maskMax + DimDelta(theScan,0)
 				If(xSeed > IndexToScale(theScan,DimSize(theScan,0)-1,0))
-					xSeed = 0
+					xSeed = IndexToScale(theScan,0,0)
 				EndIf
 				
 				maskMin = WaveMin(roiY)
@@ -760,7 +760,7 @@ Function GetROI()
 				
 				ySeed = maskMax + DimDelta(theScan,1)
 				If(ySeed > IndexToScale(theScan,DimSize(theScan,1)-1,1))
-					ySeed = 0
+					ySeed = IndexToScale(theScan,0,1)
 				EndIf
 				
 				//ROI mask wave				
