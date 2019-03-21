@@ -604,11 +604,11 @@ Function LoadAnalysisSuite([left,top])
 	//CheckBox NotSeqBox,win = analysis_tools,pos={170,yPos},title="Not in sequence?",proc = atCheckProc
 	
 	yPos+=20
-	CheckBox ch1Check,win=analysis_tools,pos={10,yPos},title="Ch1"
-	CheckBox ch2Check,win=analysis_tools,pos={50,yPos},title="Ch2"
-	CheckBox ratioCheck,win=analysis_tools,pos={90,yPos},title="Ratio"
-	CheckBox ratioCheck,win=analysis_tools,pos={90,yPos},title="Ratio"
-	
+	CheckBox ch1Check,win=analysis_tools,pos={60,yPos},title="Ch1"
+	CheckBox ch2Check,win=analysis_tools,pos={100,yPos},title="Ch2"
+	CheckBox ratioCheck,win=analysis_tools,pos={140,yPos},title="Ratio"
+	PopUpMenu dFAbsMenu,win=analysis_tools,pos={10,yPos},value="∆;Abs",title="",disable=1
+		
 	yPos += 20
 	CheckBox getPeaksCheck,win=analysis_tools,pos={10,yPos},title="Get Peaks"
 	SetVariable pkWindow win=analysis_tools,title="Width",pos={68,yPos+1},bodywidth=35,value=_NUM:0,limits={0,inf,0.05},size={80,20},disable=0
@@ -669,7 +669,7 @@ Function CreateControlLists(cmdList)
 	SVAR ctrlList_MultiROI = root:Packages:analysisTools:ctrlList_multiROI
 	ctrlList_MultiROI = "bslnStVar;bslnEndVar;peakStVar;peakEndVar;DarkValueVar;SmoothBox;SpaceFilterVar;SmoothFilterVar;angleList;BatchsizeVar;numtrialsVar;"
 	ctrlList_MultiROI += "ch1Check;ch2Check;ratioCheck;getPeaksCheck;pkWindow;doAvgCheck;presetAngleListPop;addPresetAngle;deletePresetAngle;RemoveLaserResponseCheck;"
-	ctrlList_MultiROI += "doDarkSubtract;activePixelsOnly;activePixelThreshSize;doAvgROIsCheck"
+	ctrlList_MultiROI += "doDarkSubtract;activePixelsOnly;activePixelThreshSize;doAvgROIsCheck;dFAbsMenu"
 
 	
 	//ROI From Map
@@ -1312,6 +1312,23 @@ Function ChangeControls(currentCmd,prevCmd)
 			ListBox extFuncDSListBox win=analysis_tools,pos={180,121},disable=1
 			ControlInfo/W=analysis_tools extFuncDS
 			SetExtFuncMenus(S_Value)
+			break
+		case "MultiROI":
+			CheckBox SmoothBox,win=analysis_tools,pos={10,107}
+			SetVariable SmoothFilterVar,win=analysis_tools,pos={30,107}
+			SetVariable bslnStVar win=analysis_tools,pos={10,65}
+			SetVariable bslnEndVar win=analysis_tools,pos={15,85}
+			SetVariable peakStVar win=analysis_tools,pos={120,65}
+			SetVariable peakEndVar win=analysis_tools,pos={125,85}
+			CheckBox ch1Check,win=analysis_tools,pos={60,127}
+			CheckBox ch2Check,win=analysis_tools,pos={100,127}
+			CheckBox ratioCheck,win=analysis_tools,pos={140,127}
+			SetVariable angleList,win=analysis_tools,pos={10,186}
+			PopUpMenu presetAngleListPop,win=analysis_tools,pos={10,205}
+			Button addPresetAngle,win=analysis_tools,pos={140,205}
+			Button deletePresetAngle,win=analysis_tools,pos={165,205}
+			CheckBox RemoveLaserResponseCheck win=analysis_tools,pos={10,231}
+			CheckBox doDarkSubtract win=analysis_tools,pos={10,250}
 			break
 		default:
 				//return controls to default positions

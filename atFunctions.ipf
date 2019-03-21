@@ -849,12 +849,24 @@ Function GetROI()
 					bsln2 = median(RawROI2,bslnStart,bslnEnd)
 				EndIf			
 				
+				//Absolute fluorescence or delta fluorescence?
+				ControlInfo/W=analysis_tools dFAbsMenu
+				Variable dFAbs = V_Value - 1 //0 = ∆; 1 = Abs
+				
 				//Make ∆F/F or ∆G/R waves
 				If(cmpstr(whichList,"AT") == 0)
 					If(doRatio)
-						dFname = theScanName + "_1_ROI" + theROI + "_dGR"
+						If(dFAbs)
+							dFname = theScanName + "_1_ROI" + theROI + "_absGR"
+						Else
+							dFname = theScanName + "_1_ROI" + theROI + "_dGR"
+						EndIf
 					Else
-						dFname = theScanName + "_" + channel + "_ROI" + theROI + "_dF"
+						If(dFAbs)
+							dFname = theScanName + "_" + channel + "_ROI" + theROI + "_absF"
+						Else
+							dFname = theScanName + "_" + channel + "_ROI" + theROI + "_dF"
+						EndIf
 					EndIf
 				ElseIf(cmpstr(whichList,"Browser") == 0)
 					//different naming scheme for non-scan list waves that might have different name structures
@@ -864,21 +876,47 @@ Function GetROI()
 				//Make the dF or dG wave
 				Make/O/N=(numFrames) $dFName
 				Wave dF = $dFName
+				
 			
 				//Calculate ∆F/F or ∆G/R
 				If(doRatio)
 					//∆G/R
+					
 					If(darkSubtract)
-						dF = (RawROI - bsln)/(bsln2 - darkVal2)
+						If(dFAbs)
+							//absolute fluorescence
+							dF = RawROI/(bsln2 - darkVal2)
+						Else
+							//change fluorescence
+							dF = (RawROI - bsln)/(bsln2 - darkVal2)
+						EndIf
 					Else
-						dF = (RawROI - bsln)/bsln2
+						If(dFAbs)
+							//absolute fluorescence
+							dF = RawROI/bsln2
+						Else
+							//change fluorescence
+							dF = (RawROI - bsln)/bsln2
+						EndIF
 					EndIf
 				Else
 					//∆F/F
 					If(darkSubtract)
-						dF = (RawROI - bsln)/(bsln - darkVal) 
+						If(dFAbs)
+							//absolute fluorescence
+							dF = RawROI - darkVal
+						Else
+							//change fluorescence
+							dF = (RawROI - bsln)/(bsln - darkVal) 
+						EndIf
 					Else
-						dF = (RawROI - bsln)/bsln 
+						If(dFAbs)
+							//absolute fluorescence
+							dF = RawROI
+						Else
+							//change fluorescence
+							dF = (RawROI - bsln)/bsln 
+						EndIf
 					EndIf
 				EndIf
 				
