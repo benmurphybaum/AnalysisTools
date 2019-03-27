@@ -63,9 +63,12 @@ Function atButtonProc(ba) : ButtonControl
 							
 							//Test whether they have the same number of waveset dimensions
 							String dims = GetWaveSetDims(StringFromList(0,dsRefList,";"))
+							Make/FREE/N=(ItemsInList(dsRefList,";")) wsDimSize //holds number of waves in each waveset
+							
 							If(ItemsInList(dsRefList,";") > 0)	//if there are data set references, otherwise continue
 								For(i=1;i<ItemsInList(dsRefList,";");i+=1)
 									String testDims = GetWaveSetDims(StringFromList(i,dsRefList,";"))
+									wsDimSize[i] = str2num(testDims)
 									If(cmpstr(testDims,dims))
 									//	Abort "Data sets must have the same dimensions"
 									EndIf
@@ -81,6 +84,8 @@ Function atButtonProc(ba) : ButtonControl
 								If(strlen(dsName))
 									String theWaveSet = GetWaveSet(dsName,wsn=i)
 									numWaves = ItemsInList(theWaveSet,";")
+									numWaves = WaveMax(wsDimSize)
+
 								Else
 									numWaves = 1
 								EndIf
@@ -1567,6 +1572,12 @@ Function getLineHook(s)
 	NVAR distance = root:Packages:analysisTools:distance 
 	Wave/T/Z distanceWave = root:Packages:analysisTools:distanceWave
 
+	Wave/T roiTable = root:roiTable
+	
+	//centers of the ROIs
+	Wave ROIx = root:twoP_ROIS:ROIx
+	Wave ROIy = root:twoP_ROIS:ROIy
+	
 	If(DimSize(WavesOnGraph,0))
 		Wave theWave = $WavesOnGraph[0][1]
 		Variable count = 0
@@ -1640,68 +1651,105 @@ Function getLineHook(s)
 		//handle deactivate
 			break
 		case 4:
-		//mouse moved
-		If(activeProfile)	//only starts tracing mouse path if the initial starting click has been made (sets activeProfile = 1)
-			If(mouseEvent == 1 && activeProfile == 1)
-				
-				If(DimSize(xWave,0) == 0)
-					Redimension/N=(DimSize(xWave,0)+1) xWave
-					Redimension/N=(DimSize(yWave,0)+1) yWave
-					xWave[DimSize(xWave,0)-1] = ScaleToIndex(theWave,AxisValFromPixel(graphName,"bottom",s.mouseLoc.h),0)
-					yWave[DimSize(yWave,0)-1] = ScaleToIndex(theWave,AxisValFromPixel(graphName,"left",s.mouseLoc.v),1)
+			//mouse moved
+			If(activeProfile)	//only starts tracing mouse path if the initial starting click has been made (sets activeProfile = 1)
+				If(mouseEvent == 1 && activeProfile == 1)
 					
-				Else
-					If(ScaleToIndex(theWave,AxisValFromPixel(graphName,"bottom",s.mouseLoc.h),0) == xWave[DimSize(xWave,0)-1])
-						If(ScaleToIndex(theWave,AxisValFromPixel(graphName,"left",s.mouseLoc.v),1) == yWave[DimSize(yWave,0)-1])
-							//discards point if movement is sub-pixel
-						EndIf
-					Else
-						
+					If(DimSize(xWave,0) == 0)
 						Redimension/N=(DimSize(xWave,0)+1) xWave
 						Redimension/N=(DimSize(yWave,0)+1) yWave
 						xWave[DimSize(xWave,0)-1] = ScaleToIndex(theWave,AxisValFromPixel(graphName,"bottom",s.mouseLoc.h),0)
 						yWave[DimSize(yWave,0)-1] = ScaleToIndex(theWave,AxisValFromPixel(graphName,"left",s.mouseLoc.v),1)
-			
-					EndIf
-				EndIf
-				//Is the mouse over a new ROI?
-				Variable pass = 0
-			 If(pass)
-				String currentROI = getMouseROI(windowName,theWave,root:ROI_table_filter,root:twoP_ROIS:ROIx,root:twoP_ROIS:ROIy)
-				If(strlen(currentROI) && strlen(startROI))
-					If(cmpstr(currentROI,startROI) != 0)
-						If(cmpstr(currentROI,prevROI) != 0)
-								Duplicate/FREE xWave,xFree
-								Duplicate/FREE yWave,yFree
-								For(i=0;i<DimSize(xWave,0);i+=1)
-									xFree[i] = IndexToScale(theWave,xWave[i],0)
-									yFree[i] = IndexToScale(theWave,yWave[i],1)
-								EndFor
-							//distance = getLineProfileDistance(xFree,yFree)
+						
+					Else
+						If(ScaleToIndex(theWave,AxisValFromPixel(graphName,"bottom",s.mouseLoc.h),0) == xWave[DimSize(xWave,0)-1])
+							If(ScaleToIndex(theWave,AxisValFromPixel(graphName,"left",s.mouseLoc.v),1) == yWave[DimSize(yWave,0)-1])
+								//discards point if movement is sub-pixel
+							EndIf
+						Else
 							
-							//add another row to the distance wave
-							Variable distWaveSize = DimSize(distanceWave,0)
-							Redimension/N=(distWaveSize+1,2) distanceWave
-							//fill with ROI that the mouse is over and its distance from the start
-							If(DimSize(xFree,0) > 1)
-								distanceWave[distWaveSize][0] = currentROI
-								distanceWave[distWaveSize][1] = num2str(getLineProfileDistance(xFree,yFree))
-							EndIf					
-							//FillDMatrix(startROI,currentROI,distance)
-							prevROI = currentROI
+							Redimension/N=(DimSize(xWave,0)+1) xWave
+							Redimension/N=(DimSize(yWave,0)+1) yWave
+							xWave[DimSize(xWave,0)-1] = ScaleToIndex(theWave,AxisValFromPixel(graphName,"bottom",s.mouseLoc.h),0)
+							yWave[DimSize(yWave,0)-1] = ScaleToIndex(theWave,AxisValFromPixel(graphName,"left",s.mouseLoc.v),1)
+				
 						EndIf
 					EndIf
+																
+					//Is the line profile near enough to the center of the ROI?
+					//If we take the profile right after it switches to a new ROI, the distance will be short.
+					
+					//What ROI is the mouse hovering over?
+					String currentROI = getMouseROI(windowName,theWave,root:roiTable,root:twoP_ROIS:ROIx,root:twoP_ROIS:ROIy)
+					
+					//How far away is the mouse from the center of that ROI?
+					Variable index = tableMatch(currentROI,roiTable)
+					If(index != -1) //-1: not over ROI, in dead zones between them
+						Variable xDist,yDist
+						xDist = IndexToScale(theWave,xWave[DimSize(xWave,0) - 1],0)
+						yDist = IndexToScale(theWave,yWave[DimSize(yWave,0) - 1],1)
+						Variable distFromROICenterX = abs(ROIx[index] - xDist) 
+						Variable distFromROICenterY = abs(ROIy[index] - yDist)
+					Else
+						return 0
+					EndIf
+										
+					//Is the mouse over a new ROI?
+					Variable pass = 1
+				   If(pass)
+						//String currentROI = getMouseROI(windowName,theWave,root:roiTable,root:twoP_ROIS:ROIx,root:twoP_ROIS:ROIy)
+						
+						If(strlen(currentROI) && strlen(startROI))
+							If(cmpstr(currentROI,startROI) != 0)
+								If(cmpstr(currentROI,prevROI) != 0)
+									
+										Duplicate/FREE xWave,xFree
+										Duplicate/FREE yWave,yFree
+										For(i=0;i<DimSize(xWave,0);i+=1)
+											xFree[i] = IndexToScale(theWave,xWave[i],0)
+											yFree[i] = IndexToScale(theWave,yWave[i],1)
+										EndFor
+										//distance = getLineProfileDistance(xFree,yFree)
+										
+										//fill with ROI that the mouse is over and its distance from the start
+										If(DimSize(xFree,0) > 1)
+											//add another row to the distance wave
+											Variable distWaveSize = DimSize(distanceWave,0)
+											Redimension/N=(distWaveSize+1,2) distanceWave
+
+											//must be within 1 µm of the ROI center to register as hitting that ROI
+											
+											If(distFromROICenterX < 0.5e-6 && distFromROICenterY < 0.5e-6) 
+												print "center: " + currentROI
+												distanceWave[distWaveSize][0] = currentROI
+												
+												//get distance w/ line profile of the in-progress line
+												ImageLineProfile/SC/P=-2 xWave=xFree,yWave=yFree,srcWave=theWave,width=1
+												Wave lineProfileDist = $(GetDataFolder(1) + "W_LineProfileDisplacement")
+												
+												Variable dist = lineProfileDist[DimSize(lineProfileDist,0)-1]
+												distanceWave[distWaveSize][1] = num2str(dist)
+												
+												//register the current ROI as having been hit
+												prevROI = currentROI
+												
+											EndIf
+												//distanceWave[distWaveSize][1] = num2str(getLineProfileDistance(xFree,yFree))
+										EndIf					
+										//FillDMatrix(distanceWave,startROI,currentROI,distance)
+										
+								EndIf
+							EndIf
+					 	EndIf
+			   	EndIf
 				EndIf
-				
-		     EndIf
-				
 			EndIf
-		EndIf
 			break
 		case 5:
 		//mouse up
 		If(activeProfile)	//Stops tracing the mouse path if the path was active (sets activeProfile = 0), otherwise activate the path (sets activeProfile = 1)
 			If(mouseEvent == 1)
+				SetWindow $windowName, hook(getLineHook)=$"" //remove window hook
 				mouseEvent = 0
 				Redimension/N=(DimSize(xWave,0)-1) xWave,xWaveIndex
 				Redimension/N=(DimSize(yWave,0)-1) yWave,yWaveIndex
@@ -1735,12 +1783,12 @@ Function getLineHook(s)
 					Variable baselineStart,baselineEnd
 
 					ControlInfo/W=analysis_tools bslnStVar
-					baselineStart = V_Value
+					baselineStart = ScaleToIndex(theWave,V_Value,2)
 					ControlInfo/W=analysis_tools bslnEndVar
-					baselineEnd = V_Value
+					baselineEnd = ScaleToIndex(theWave,V_Value,2)
 					
 					//Get the baseline portion of the scan
-					Make/FREE/N=(DimSize(theWave,0),DimSize(theWave,1),ScaleToIndex(theWave,baselineEnd,2)-ScaleToIndex(theWave,baselineStart,2)) baselineScan
+					Make/FREE/N=(DimSize(theWave,0),DimSize(theWave,1),baselineEnd-baselineStart) baselineScan
 					//Set scales
 					SetScale/P x,DimOffset(theWave,0),DimDelta(theWave,0),baselineScan
 					SetScale/P y,DimOffset(theWave,1),DimDelta(theWave,1),baselineScan
@@ -1764,7 +1812,7 @@ Function getLineHook(s)
 					EndIf
 					
 					//collapse baseline profile, mean over time
-					collapseLineProfile(baselineProfile,"avg")
+					collapseLineProfile(baselineProfile,theWave,"avg")
 					
 				EndIf
 				
@@ -1796,7 +1844,7 @@ Function getLineHook(s)
 					Variable start = V_Value
 					ControlInfo/W=analysis_tools peakEndVar
 					Variable stop = V_Value
-					collapseLineProfile(theProfile,"max",start=start,stop=stop)
+					collapseLineProfile(theProfile,theWave,"max",start=start,stop=stop)
 				EndIf
 				
 				//∆F/F profile
@@ -1824,8 +1872,11 @@ Function getLineHook(s)
 					//Rename displacement profile wave for Igor 8
 					If(WaveExists($(GetDataFolder(1) + "W_LineProfileDisplacement")))
 						Wave lineProfileDisp = $(GetDataFolder(1) + "W_LineProfileDisplacement")
+						KillWaves/Z root:var:W_LineProfileDisplacement
+						MoveWave lineProfileDisp,root:var:W_LineProfileDisplacement
+						
 						Duplicate/O lineProfileDisp,$displacementProfileName
-						KillWaves/Z lineProfileDisp
+						//KillWaves/Z lineProfileDisp
 						Wave lineProfileDisp = $displacementProfileName
 					EndIf
 				EndIf
@@ -1918,7 +1969,7 @@ Function getLineHook(s)
 				//Sets the ending ROI name and the distance between the start/end ROIs
 				If(distOnly)
 					Wave/T distData = $distDataName
-					String mouseROI = getMouseROI(windowName,theWave,root:ROI_table_filter,root:twoP_ROIS:ROIx,root:twoP_ROIS:ROIy)
+					String mouseROI = getMouseROI(windowName,theWave,root:roiTable,root:twoP_ROIS:ROIx,root:twoP_ROIS:ROIy)
 					endROI = mouseROI
 				//	print "End: " + mouseROI
 				//	distData[0][DimSize(distData,1) - 1] = mouseROI
@@ -1927,12 +1978,12 @@ Function getLineHook(s)
 					If(DimSize(xFree,0) > 1)
 						distance = getLineProfileDistance(xFree,yFree)
 					EndIf					
-				//	If(strlen(startROI) && strlen(endROI))
-				//		FillDMatrix(startROI,endROI,distance)
-				//	EndIf
+					If(strlen(startROI) && strlen(endROI))
+						FillDMatrix(distanceWave,startROI)
+					EndIf
 				//	print distance
 					Wave filterTable = root:ROI_table_filter
-					FillDMatrix(distanceWave,filterTable)
+					//FillDMatrix(distanceWave,filterTable)
 				EndIf
 				
 				
@@ -1947,33 +1998,39 @@ Function getLineHook(s)
 				Wave/T distanceWave = root:Packages:analysisTools:distanceWave
 				
 				If(distOnly)
-					mouseROI = getMouseROI(windowName,theWave,root:ROI_table_filter,root:twoP_ROIS:ROIx,root:twoP_ROIS:ROIy)
-				//	print "Start: " + mouseROI
-					
-					
+					mouseROI = getMouseROI(windowName,theWave,root:roitable,root:twoP_ROIS:ROIx,root:twoP_ROIS:ROIy)
+					print "Start: " + mouseROI
+
 					startROI = mouseROI
 					If(strlen(startROI))
 						distanceWave[0][0] = startROI
-						distanceWave[0][1] = num2str(0)
+						
+						//get distance from starting point of the line profile to the center of the ROI
+						//index = tableMatch(startROI,roiTable)
+						//xDist = ROIx[index] - AxisValFromPixel(graphName,"bottom",s.mouseLoc.h)
+						//yDist = ROIy[index] - AxisValFromPixel(graphName,"left",s.mouseLoc.v)
+						distanceWave[0][1] = "0"//num2str(sqrt(xDist^2 + yDist^2))
+						//print distanceWave[0][1]
 					EndIf
 					
 					distDataName = "root:ROI_analysis:distData" + "_" + mouseROI
-					If(!WaveExists($distDataName))
-						Make/O/T/N=(2,1) $distDataName
+					//If(!WaveExists($distDataName))
+					//	Make/O/T/N=(2,1) $distDataName
 						//2 rows
 						//Name of Wave: start ROI name
 						//R0: end ROI name
 						//R1: cable distance between those ROIs
 						//columns will be added for each new ending ROI for a given starting ROI
-					Else
+					//Else
 						//add a column
-						Wave/T distData = $distDataName
-						Redimension/N=(2,DimSize($distDataName,1) + 1) $distDataName
-					EndIf
+					//	Wave/T distData = $distDataName
+					//	Redimension/N=(2,DimSize($distDataName,1) + 1) $distDataName
+					//EndIf
 				EndIf
 					//reset ROI strings
 				prevROI = ""
 				currentROI = ""
+				
 			EndIf
 		
 						

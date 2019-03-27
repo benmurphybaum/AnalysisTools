@@ -2223,29 +2223,28 @@ Function applyFilters(theWave)
 End
 
 
-Function FillDMatrix(distanceWave,filterTable)
-	Wave/T distanceWave,filterTable
+Function FillDMatrix(distanceWave,startROI)
+	Wave/T distanceWave//,filterTable
+	String startROI
 	
-	Wave/T roiTable = root:ROI_table
+	Wave/T roiTable = root:roiTable
 	Wave dMatrix = root:ROI_dist_matrix
 		
-	Variable numFilterROIs = DimSize(filterTable,0)
 	Variable numROIs = DimSize(roiTable,0)
 	Variable i,j,length,row,col
 	String ROIList = ""
-	String filterROIList = ""
 	
 	//Make list for the ROI table
 	For(i=0;i<numROIs;i+=1)
 		ROIList += roiTable[i] + ";"
 	EndFor
-	For(i=0;i<numFilterROIs;i+=1)
-		filterROIList += filterTable[i] + ";"
-	EndFor
+	
+	//waves holding the actual center point for all ROIs
+	Wave ROIx = root:twoP_ROIS:ROIx
+	Wave ROIy = root:twoP_ROIS:ROIy
 	
 	ROIList = RemoveEnding(ROIList,";")
-	filterROIList = RemoveEnding(filterROIList,";")
-	
+		
 	length = DimSize(distanceWave,0)
 	
 	For(i=0;i<length;i+=1)
@@ -2254,18 +2253,7 @@ Function FillDMatrix(distanceWave,filterTable)
 		
 			row = WhichListItem(distanceWave[i][0],ROIList,";")	//start ROI
 			col = WhichListItem(distanceWave[j][0],ROIList,";")	//end ROI
-			
-			//Is it in the filtered list?
-			Variable isPresent = WhichListItem(distanceWave[i][0],filterROIList,";")
-			If(isPresent == -1)
-				continue
-			Else
-				isPresent = WhichListItem(distanceWave[j][0],filterROIList,";")
-				If(isPresent == -1)
-					continue
-				EndIf
-			EndIf
-			
+
 			If(row == -1 || col == -1)
 				continue
 			Else
@@ -2400,6 +2388,7 @@ Function saveLineProfile()
 	
 	Wave xProfile = root:var:xWave
 	Wave yProfile = root:var:yWave
+	Wave dProfile = root:var:W_LineProfileDisplacement
 	
 	If(WaveExists(root:var:xWave))
 		Wave xProfile = root:var:xWave
@@ -2414,18 +2403,22 @@ Function saveLineProfile()
 	EndIf
 	
 	//Get output names for the saved line profiles
-	String xName,yName
+	String xName,yName,dName
 	ControlInfo/W=analysis_tools saveLineProfileSuffix
 	If(!strlen(S_Value))
 		xName = UniqueName("LineProfileX_",1,0)
 		yName = ReplaceString("LineProfileX",xName,"LineProfileY")
+		dName = ReplaceString("LineProfileD",xName,"LineProfileD")
 	Else
 		xName = "LineProfileX_" + S_Value
 		yName = "LineProfileY_" + S_Value
+		dName = "LineProfileD_" + S_Value
 	EndIf
+	
 	//Move and rename the profile waves
 	MoveWave xProfile,$(folder + ":" + xName)
 	MoveWave yProfile,$(folder + ":" + yName)
+	MoveWave dProfile,$(folder + ":" + dName)
 	
 	SetDataFolder $saveDF
 //	String profileList = getSavedProfileList()
@@ -2489,9 +2482,9 @@ Function applyLineProfile()
 					Variable baselineStart,baselineEnd
 
 					ControlInfo/W=analysis_tools bslnStVar
-					baselineStart = V_Value
+					baselineStart = ScaleToIndex(theWave,V_Value,2)
 					ControlInfo/W=analysis_tools bslnEndVar
-					baselineEnd = V_Value
+					baselineEnd = ScaleToIndex(theWave,V_Value,2)
 					
 					//Get the baseline portion of the scan
 					Make/FREE/N=(DimSize(theWave,0),DimSize(theWave,1),baselineEnd-baselineStart) baselineScan
@@ -2520,7 +2513,7 @@ Function applyLineProfile()
 					EndIf
 					
 					//Collapse if selected to mean baseline
-					collapseLineProfile(baselineProfile,"avg")
+					collapseLineProfile(baselineProfile,theWave,"avg")
 				
 				EndIf
 				
@@ -2551,8 +2544,9 @@ Function applyLineProfile()
 					outputProfileName = GetDataFolder(1) + "W_ImageLineProfile"
 				EndIf
 				
+				String suffix = StringFromList(ItemsInList(yProfileName,"_")-1,yProfileName,"_")
 				//Rename line profile wave
-				lineProfileName = NameOfWave(theWave) + "_lineProfile"
+				lineProfileName = NameOfWave(theWave) + "_LP" + suffix
 				
 				If(doDF)
 					lineProfileName += "_dF"
@@ -2571,6 +2565,7 @@ Function applyLineProfile()
 				If(V_Value)
 					ControlInfo/W=analysis_tools SmoothFilterVar
 					If(DimSize(theProfile,1) > 0 && V_Value != 0)
+					//	Smooth/S=2/DIM=0 5,theProfile
 						Smooth/S=2/DIM=1 V_Value,theProfile
 					Else
 					//	Smooth/S=2 V_Value,theProfile
@@ -2584,7 +2579,7 @@ Function applyLineProfile()
 					Variable start = V_Value
 					ControlInfo/W=analysis_tools peakEndVar
 					Variable stop = V_Value
-					collapseLineProfile(theProfile,"max",start=start,stop=stop)
+					collapseLineProfile(theProfile,theWave,"max",start=start,stop=stop)
 				EndIf
 				
 				//∆F/F profile
@@ -2689,7 +2684,7 @@ Function applyLineProfile()
 			EndIf
 					
 			//Collapse to mean baseline
-			collapseLineProfile(baselineProfile,"avg")
+			collapseLineProfile(baselineProfile,theWave,"avg")
 		EndIf
 
 		ImageLineProfile/SC/P=-2 xWave=xProfile,yWave=yProfile,srcWave=theWave,width=width
@@ -2754,7 +2749,7 @@ Function applyLineProfile()
 			start = V_Value
 			ControlInfo/W=analysis_tools peakEndVar
 			stop = V_Value
-			collapseLineProfile(theProfile,"max",start=start,stop=stop)
+			collapseLineProfile(theProfile,theWave,"max",start=start,stop=stop)
 		EndIf
 				
 		//∆F/F profile
@@ -2773,8 +2768,9 @@ Function applyLineProfile()
 	
 End
 
-Function collapseLineProfile(theProfile,type,[start,stop])
+Function collapseLineProfile(theProfile,theWave,type,[start,stop])
 	wave theProfile
+	wave theWave
 	String type
 	Variable start,stop
 	Variable i
@@ -2786,20 +2782,21 @@ Function collapseLineProfile(theProfile,type,[start,stop])
 	EndIf
 	
 	If(ParamIsDefault(stop))
-		stop = DimSize(theProfile,1)
+		stop = DimSize(theProfile,0)
 	EndIf
 	
-	For(i=start;i<stop;i+=1)
+	For(i=0;i<DimSize(theProfile,0);i+=1)
 		theCol[] = theProfile[i][p]
+		SetScale/P x,DimOffset(theWave,2),DimDelta(theWave,2),theCol
 		If(cmpstr(type,"max") == 0)
-			theProfile[i] = WaveMax(theCol)
+			theProfile[i] = WaveMax(theCol,start,stop)
 		ElseIf(cmpstr(type,"avg") == 0)
 			theProfile[i] = Mean(theCol)
 		EndIf
 	EndFor
 	
 	//MatrixOP/FREE maxProj = maxRows(theProfile) 
-	Redimension/N=(-1,0) theProfile
+	Redimension/N=(0-1,0) theProfile
 	//theProfile = maxProj
 End
 
@@ -3897,13 +3894,22 @@ Function/S resolveCmdLine(cmdLineStr,wsn,wsi)
 					wsiIndex = wsi
 				EndIf
 				
-				String theWaveSet = GetWaveSet(dsName,wsn=wsnIndex)
-				String theWaveStr = StringFromList(wsiIndex,theWaveSet,";")
+				
+			  String theWaveSet = GetWaveSet(dsName,wsn=wsnIndex)
+			  String theWaveStr = StringFromList(wsiIndex,theWaveSet,";")
 				
 			Else
 				//No wsi specifier
-				theWaveSet = GetWaveSet(dsName,wsn=wsn)
-				theWaveStr = StringFromList(wsi,theWaveSet,";")
+				If(cmpstr(dsName,"wsi") == 0)
+					theWaveSet = ""
+				   theWaveStr = num2str(wsi)
+				ElseIf(cmpstr(dsName,"wsn") == 0)
+				   theWaveSet = ""
+				   theWaveStr = num2str(wsn)
+				Else
+					theWaveSet = GetWaveSet(dsName,wsn=wsn)
+					theWaveStr = StringFromList(wsi,theWaveSet,";")
+				EndIf
 			EndIf
 			
 			//section of string that isn't a data set reference

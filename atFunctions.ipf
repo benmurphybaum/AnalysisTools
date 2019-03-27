@@ -4140,6 +4140,16 @@ Function GetLineProfile()
 	SVAR prevROI = root:Packages:analysisTools:prevROI
 	prevROI = ""
 	
+	Wave roiTable = root:roiTable
+	
+	//Make distance matrix wave
+	Wave/Z dMatrix = root:ROI_dist_matrix
+	If(!WaveExists(dMatrix))
+		Make/O/N=(DimSize(roiTable,0),DimSize(roiTable,0)) root:ROI_dist_matrix
+		Wave dMatrix = root:ROI_dist_matrix
+		dMatrix = 0
+	EndIf
+	
 	SetWindow $windowName, hook(getLineHook)=getLineHook
 	return 0
 End
@@ -6121,10 +6131,10 @@ Function duplicateRename()
 	Variable killOriginals = V_Value
 	
 	//Finds the wave paths for analysis
-	theWaveList = getWaveNames()
+	theWaveList = getWaveNames(ignoreWaveGrouping=1)
 	numWaves = ItemsInList(theWaveList,";")
 	
-	For(i=0;i<numWaves;i+=1)
+	For(i=0;i<numWaves;i+=1) //for # waves in the waveset
 		Wave/Z theWave = $StringFromList(i,theWaveList,";")
 		If(!WaveExists(theWave))
 			continue
@@ -6144,7 +6154,7 @@ Function duplicateRename()
 					newName = RemoveListItem(pos,newName,"_")
 				Else
 					newName = RemoveListItem(pos,newName,"_")
-					newName = AddListItem(S_Value,newName,"_",pos)
+					newName = AddListItem(StringFromList(i,S_Value,","),newName,"_",pos)
 					newName = RemoveEnding(newName,"_")
 				EndIf
 			EndIf
