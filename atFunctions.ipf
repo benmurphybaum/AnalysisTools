@@ -3391,7 +3391,13 @@ Function dfMapMultiThread()
 						
 						MultiThread dFPeakLoc[i][j] = V_MaxRowLoc
 						//averages 0.1 sec before and after the peak to get the final ∆G/R peak value
-						MultiThread dFPeakWave[i][j] = mean(theBeam,V_maxloc - 0.1,V_maxloc + 0.1)
+						
+						ControlInfo/W=analysis_tools peakOrArea
+						If(!cmpstr(S_Value,"Peak"))
+							MultiThread dFPeakWave[i][j] = mean(theBeam,V_maxloc - 0.1,V_maxloc + 0.1)
+						ElseIf(!cmpstr(S_Value,"Area"))
+							MultiThread dFPeakWave[i][j] = mean(theBeam,startTm,endTm)
+						EndIf
 					EndFor
 				EndFor
 				
@@ -3518,7 +3524,7 @@ Function dfMapMultiThread()
 					For(k=0;k<frames;k+=1)
 						MatrixOP/O/FREE theLayer = layer(temp,k)
 						MatrixFilter/N=(spatialFilter) median theLayer
-						temp[][][k] = theLayer[p][q][0]
+						MultiThread temp[][][k] = theLayer[p][q][0]
 					EndFor
 				EndIf
 				
@@ -3558,23 +3564,23 @@ Function dfMapMultiThread()
 				startLayer = ScaleToIndex(theWave,bslnStartTm,2)
 				endLayer = ScaleToIndex(theWave,bslnEndTm,2)
 				
-				greenBaseline = 0
+				MultiThread greenBaseline = 0
 				
 				For(i=startLayer;i<endLayer;i+=1)
 					MatrixOP/FREE/O theLayer = layer(temp,i)
-					greenBaseline += theLayer
+					MultiThread greenBaseline += theLayer
 				EndFor
-				greenBaseline /= (endLayer - startLayer)
+				MultiThread greenBaseline /= (endLayer - startLayer)
 				
 				//Eliminates the possibility of zero values in the dataset for dendrites in the mask, which all get converted to NaN at the end.
-				temp = (temp[p][q][r] == greenBaseline[p][q][0]) ? temp[p][q][r] + 1 : temp[p][q][r]
+				MultiThread temp = (temp[p][q][r] == greenBaseline[p][q][0]) ? temp[p][q][r] + 1 : temp[p][q][r]
 				
 				//Get the ∆F/F time series map with dark subtraction from the non-masked area
 				ControlInfo/W=analysis_tools doDarkSubtract
 				If(V_Value)
-					dFWave = (temp[p][q][r] - greenBaseline[p][q][0]) / (greenBaseline[p][q][0] - darkValue)
+					MultiThread dFWave = (temp[p][q][r] - greenBaseline[p][q][0]) / (greenBaseline[p][q][0] - darkValue)
 				Else
-					dFWave = (temp[p][q][r] - greenBaseline[p][q][0]) / greenBaseline[p][q][0]
+					MultiThread dFWave = (temp[p][q][r] - greenBaseline[p][q][0]) / greenBaseline[p][q][0]
 				EndIf
 						
 				//Make waves for the peak and peak-time maps
@@ -3594,8 +3600,8 @@ Function dfMapMultiThread()
 			//	Wave dFDiff_pk = $(dFPeakWaveName + "dt")
 			//	Wave dF_conv = $(dFWaveName + "conv")
 				
-				dFPeakWave = gnoise(0.001)
-				dFPeakLoc = 0
+				MultiThread dFPeakWave = gnoise(0.001)
+				MultiThread dFPeakLoc = 0
 			//	dFDiff = gnoise(0.001)
 				//dFDiff_pk = gnoise(0.001)
 				//dF_conv = gnoise(0.00001)
@@ -3624,9 +3630,15 @@ Function dfMapMultiThread()
 						SetScale/P x,DimOffset(theWave,2),DimDelta(theWave,2),theBeam
 						WaveStats/Q/R=(startTm,endTm) theBeam
 						
-						dFPeakLoc[i][j] = V_MaxRowLoc
+						MultiThread dFPeakLoc[i][j] = V_MaxRowLoc
+						
 						//averages 0.1 sec before and after the peak to get the final ∆F/F peak value
-						dFPeakWave[i][j] = mean(theBeam,V_maxloc - 0.5,V_maxloc + 0.5)
+						ControlInfo/W=analysis_tools peakOrArea
+						If(!cmpstr(S_Value,"Peak"))
+							MultiThread dFPeakWave[i][j] = mean(theBeam,V_maxloc - 0.1,V_maxloc + 0.1)
+						ElseIf(!cmpstr(S_Value,"Area"))
+							MultiThread dFPeakWave[i][j] = mean(theBeam,startTm,endTm)
+						EndIf
 						
 						//dFDiff_pk[i][j] = mean(theBeam,V_maxLoc-0.75,V_max+0.5) //get the average of the differential during the rising phase of the response.
 						
@@ -3654,7 +3666,8 @@ Function dfMapMultiThread()
 			
 				//Additional spatial filter on the peak ∆F/F or ∆G/R map
 				ControlInfo/W=analysis_tools postSpatialFilter
-				MatrixFilter/N=(V_Value)/R=darkMask median dFPeakWave
+				Variable postSpatial = V_Value
+				MatrixFilter/N=(postSpatial)/R=darkMask median dFPeakWave
 				//MatrixFilter/N=(V_Value)/R=darkMask median dFDiff_pk
 				
 				//If(doRatio)
@@ -3722,7 +3735,8 @@ Function dfMapMultiThread()
 					If(didSmooth)
 						Note notedWave,"SMOOTH:" + num2str(smoothVar)
 					EndIf
-					Note notedWave,"SPATIAL:" + num2str(spatialFilter)
+					Note notedWave,"PRE-SPATIAL:" + num2str(spatialFilter)
+					Note notedWave,"POST-SPATIAL:" + num2str(postSpatial)
 					Note notedWave,"NOISE:" + num2str(cleanNoise)
 					Note notedWave,"LASER:" + num2str(removeLaserResponse)
 					Note notedWave,"MASK:" + NameOfWave(theMask)
@@ -6121,8 +6135,8 @@ End
 
 Function duplicateRename()
 
-	Variable numWaves,i,j,pos
-	String theWaveList,name,newName,posList,ctrlList
+	Variable numWaves,i,j,pos,numAddItems
+	String theWaveList,name,newName,posList,ctrlList,addItem
 	
 	posList = "0;1;2;3;4"
 	ctrlList = "prefixName;groupName;seriesName;sweepName;traceName"
@@ -6147,6 +6161,7 @@ Function duplicateRename()
 		For(j=4;j>-1;j-=1)	//step backwards
 			//new name and the position
 			ControlInfo/W=analysis_tools $StringFromList(j,ctrlList,";")
+			numAddItems = ItemsInList(S_Value,",")
 			pos = str2num(StringFromList(j,posList,";"))
 			
 			If(strlen(S_Value))
@@ -6154,7 +6169,12 @@ Function duplicateRename()
 					newName = RemoveListItem(pos,newName,"_")
 				Else
 					newName = RemoveListItem(pos,newName,"_")
-					newName = AddListItem(StringFromList(i,S_Value,","),newName,"_",pos)
+					If(i > numAddItems - 1)
+						addItem = StringFromList(numAddItems - 1,S_Value,",")
+					Else
+						addItem = StringFromList(i,S_Value,",")
+					EndIf
+					newName = AddListItem(addItem,newName,"_",pos)
 					newName = RemoveEnding(newName,"_")
 				EndIf
 			EndIf

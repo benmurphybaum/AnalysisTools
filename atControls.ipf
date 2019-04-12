@@ -84,7 +84,7 @@ Function atButtonProc(ba) : ButtonControl
 								If(strlen(dsName))
 									String theWaveSet = GetWaveSet(dsName,wsn=i)
 									numWaves = ItemsInList(theWaveSet,";")
-									numWaves = WaveMax(wsDimSize)
+									//numWaves = WaveMax(wsDimSize)
 
 								Else
 									numWaves = 1
@@ -418,8 +418,46 @@ Function atListBoxProc(lba) : ListBoxControl
 		case -1: // control being killed
 			break
 		case 1: // mouse down
-		
-			break
+			strswitch(lba.ctrlName)
+				case "matchListBox":
+					//detect right clicks
+					If(lba.eventMod == 17)
+						PopupContextualMenu/C=(lba.MouseLoc.h, lba.MouseLoc.v) "Browse Wave"
+						If(V_flag)
+							String dsName = whichDataSet()
+							Wave/T theDataSet = $("root:Packages:analysisTools:DataSets:DS_" + dsName)
+							
+							If(!WaveExists(theDataSet))
+								Wave/T theDataSet = root:Packages:analysisTools:AT_WaveListTable_FullPath
+							EndIf
+							
+							Variable fullPathList = 0
+							
+							selWaveList = ""
+							For(i=0;i<DimSize(theDataSet,0);i+=1)
+								If(i > DimSize(selWave,0) - 1)
+									break
+								EndIf
+								
+								If(selWave[i] == 1)
+									selWaveList += theDataSet[i] + ";"
+								
+									//If we hit a waveset label
+									If(stringmatch(theDataSet[i],"*WSN*"))
+										selWaveList = ReplaceString(theDataSet[i] + ";",selWaveList,"")	//remove the wsLabel from the list
+										selWaveList += getWaveSet(dsName,wsLabel=theDataSet[i])	//add in the entire waveset to the list
+										fullPathList = 1
+									EndIf
+								EndIf
+							EndFor	
+					
+							//Browse to the selected wave
+							ModifyBrowser clearSelection,selectList=selWaveList
+							
+						EndIf
+					EndIf
+				break
+			endswitch
 		case 2: // mouse up
 			strswitch(lba.ctrlName)
 				case "AT_ItemListBox":
@@ -435,6 +473,7 @@ Function atListBoxProc(lba) : ListBoxControl
 					AppendToViewer(selWaveList)
 					
 					break
+				
 				default:
 					break
 			endswitch
@@ -705,9 +744,9 @@ Function atListBoxProc(lba) : ListBoxControl
 					Wave selWave = root:Packages:analysisTools:DataSets:dsSelWave
 					
 					ControlInfo/W=analysis_tools extFuncDS
-					String dsName = S_Value
+					dsName = S_Value
 					Wave/T theDataSet = $("root:Packages:analysisTools:DataSets:DS_" + dsName)				
-					Variable fullPathList = 0
+					fullPathList = 0
 					
 					selWaveList = ""
 					For(i=0;i<DimSize(listWave,0);i+=1)
@@ -1554,6 +1593,32 @@ Function SmoothCheckBoxProc(cba) : CheckBoxControl
 	return 0
 End
 
+//Hook function for the analysis tools panel that detects mouse clicks
+Function atClickHook(s)
+	STRUCT WMWinHookStruct &s
+	Variable hookResult = 0
+	
+	switch(s.eventCode)
+		case 0:
+		//handle activate
+			break
+		case 1:
+		//handle deactivate
+			break
+		case 5:
+		//mouse up
+			GetMouse/W=analysis_tools
+			If(V_left > 5 && V_left < 230 && V_top > 120 && V_top < 440)
+				print "matchBox"
+			Else
+				print "outside"
+			EndIf
+			break
+	endswitch
+	
+	return hookResult 
+End
+
 //Mouse hook function for line profile function
 Function getLineHook(s)
 	STRUCT WMWinHookStruct &s
@@ -1719,7 +1784,7 @@ Function getLineHook(s)
 
 											//must be within 1 µm of the ROI center to register as hitting that ROI
 											
-											If(distFromROICenterX < 0.5e-6 && distFromROICenterY < 0.5e-6) 
+											If(distFromROICenterX < 2e-6 && distFromROICenterY < 2e-6) 
 												print "center: " + currentROI
 												distanceWave[distWaveSize][0] = currentROI
 												
@@ -1780,11 +1845,13 @@ Function getLineHook(s)
 				
 				
 				If(doDF)
-					Variable baselineStart,baselineEnd
+					Variable baselineStart,baselineEnd,baselineStartPt,baselineEndPt
 
 					ControlInfo/W=analysis_tools bslnStVar
+					baselineStartPt = V_Value
 					baselineStart = ScaleToIndex(theWave,V_Value,2)
 					ControlInfo/W=analysis_tools bslnEndVar
+					baselineEndPt = V_Value
 					baselineEnd = ScaleToIndex(theWave,V_Value,2)
 					
 					//Get the baseline portion of the scan
@@ -1812,6 +1879,7 @@ Function getLineHook(s)
 					EndIf
 					
 					//collapse baseline profile, mean over time
+					SetScale/I y,baselineStartPt,baselineEndPt,baselineProfile
 					collapseLineProfile(baselineProfile,theWave,"avg")
 					
 				EndIf
@@ -1844,6 +1912,7 @@ Function getLineHook(s)
 					Variable start = V_Value
 					ControlInfo/W=analysis_tools peakEndVar
 					Variable stop = V_Value
+					SetScale/P y,DimOffset(theWave,2),DimDelta(theWave,2),theProfile
 					collapseLineProfile(theProfile,theWave,"max",start=start,stop=stop)
 				EndIf
 				
@@ -1979,7 +2048,7 @@ Function getLineHook(s)
 						distance = getLineProfileDistance(xFree,yFree)
 					EndIf					
 					If(strlen(startROI) && strlen(endROI))
-						FillDMatrix(distanceWave,startROI)
+					//	FillDMatrix(distanceWave,startROI)
 					EndIf
 				//	print distance
 					Wave filterTable = root:ROI_table_filter

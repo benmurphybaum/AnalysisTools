@@ -1490,6 +1490,11 @@ Function AppendDSWaveToViewer(selWave,itemList,dsWave,[fullPathList])
 		If(DimSize(folderTable,0) > 0)
 			For(i=0;i<DimSize(folderTable,0);i+=1)
 				String previousPath = ""
+				
+				If(i > DimSize(selFolderWave,0)-1)
+					return -1
+				EndIf
+				
 				If(selFolderWave[i] == 1)
 					For(j=count;j<ItemsInList(itemList,";");j+=1)
 						//Is the name of the next possible wave the same as the previously selected wave?
@@ -1571,6 +1576,14 @@ Function tableMatch(str,tableWave,[startp,endp,returnCol])
 	
 	If(ParamIsDefault(returnCol))
 		returnCol = 0
+	EndIf
+	
+	If(startp > DimSize(tableWave,0) - 1)
+		return -1
+	EndIf
+	
+	If(endp < DimSize(tableWave,0) - 1)
+		return -1
 	EndIf
 	
 	For(j=0;j<cols;j+=1)
@@ -2416,6 +2429,12 @@ Function saveLineProfile()
 	EndIf
 	
 	//Move and rename the profile waves
+	If(WaveExists($(folder + ":" + xName)))
+		KillWaves/Z $(folder + ":" + xName)
+		KillWaves/Z $(folder + ":" + yName)
+		KillWaves/Z $(folder + ":" + dName)
+	EndIf
+	
 	MoveWave xProfile,$(folder + ":" + xName)
 	MoveWave yProfile,$(folder + ":" + yName)
 	MoveWave dProfile,$(folder + ":" + dName)
@@ -2424,6 +2443,9 @@ Function saveLineProfile()
 //	String profileList = getSavedProfileList()
 	PopUpMenu lineProfileTemplatePopUp win=analysis_tools,value=getSavedLineProfileList()
 	ControlUpdate/W=analysis_tools lineProfileTemplatePopUp
+	
+	ControlInfo/W=analysis_tools SR_waveList
+	AppendToGraph/W=$S_Value $(folder + ":" + yName) vs $(folder + ":" + xName)
 End
 
 Function applyLineProfile()
@@ -2452,6 +2474,7 @@ Function applyLineProfile()
 	
 	//Get line profile waves
 	ControlInfo/W=analysis_tools lineProfileTemplatePopUp
+	String profileSuffix = StringFromList(1,S_Value,"_")
 	String yProfileName = S_Value
 	String xProfileName = ReplaceString("LineProfileY",yProfileName,"LineProfileX")
 	Wave xProfile = $("root:var:LineProfiles:" + xProfileName)
@@ -2479,11 +2502,13 @@ Function applyLineProfile()
 				Variable doDF = V_Value
 				
 				If(doDF)
-					Variable baselineStart,baselineEnd
+					Variable baselineStart,baselineEnd,baselineStartPt,baselineEndPt
 
 					ControlInfo/W=analysis_tools bslnStVar
+					baselineStartPt = V_Value
 					baselineStart = ScaleToIndex(theWave,V_Value,2)
 					ControlInfo/W=analysis_tools bslnEndVar
+					baselineEndPt = V_Value
 					baselineEnd = ScaleToIndex(theWave,V_Value,2)
 					
 					//Get the baseline portion of the scan
@@ -2513,8 +2538,10 @@ Function applyLineProfile()
 					EndIf
 					
 					//Collapse if selected to mean baseline
+					SetScale/I y,baselineStartPt,baselineEndPt,baselineProfile
 					collapseLineProfile(baselineProfile,theWave,"avg")
-				
+					
+					
 				EndIf
 				
 				
@@ -2522,11 +2549,9 @@ Function applyLineProfile()
 				
 				//Rename the displacement wave for Igor 8
 				If(version > 7)
-					displacementProfileName = NameOfWave(theWave) + "_lineDisp"
+					displacementProfileName = NameOfWave(theWave) + "_LP" + profileSuffix + "_disp"
 					
-					If(doDF)
-						displacementProfileName += "_dF"
-					EndIf
+					//Wave lineProfileDisp = $("root:var:LineProfiles:LineProfileD_" + StringFromList(1,profileSuffix,"_"))
 					
 					//Rename displacement profile wave for Igor 8
 					If(WaveExists($(GetDataFolder(1) + "W_LineProfileDisplacement")))
@@ -2579,6 +2604,7 @@ Function applyLineProfile()
 					Variable start = V_Value
 					ControlInfo/W=analysis_tools peakEndVar
 					Variable stop = V_Value
+					SetScale/P y,DimOffset(theWave,2),DimDelta(theWave,2),theProfile
 					collapseLineProfile(theProfile,theWave,"max",start=start,stop=stop)
 				EndIf
 				
@@ -2764,8 +2790,6 @@ Function applyLineProfile()
 		KillWaves/Z WavesOnGraph	
 		
 	EndIf
-	
-	
 End
 
 Function collapseLineProfile(theProfile,theWave,type,[start,stop])
@@ -2787,9 +2811,10 @@ Function collapseLineProfile(theProfile,theWave,type,[start,stop])
 	
 	For(i=0;i<DimSize(theProfile,0);i+=1)
 		theCol[] = theProfile[i][p]
-		SetScale/P x,DimOffset(theWave,2),DimDelta(theWave,2),theCol
+		SetScale/P x,DimOffset(theProfile,1),DimDelta(theProfile,1),theCol
 		If(cmpstr(type,"max") == 0)
-			theProfile[i] = WaveMax(theCol,start,stop)
+			WaveStats/Q/R=(start,stop) theCol
+			theProfile[i] = mean(theCol,V_maxLoc - 0.05,V_maxLoc + 0.05)
 		ElseIf(cmpstr(type,"avg") == 0)
 			theProfile[i] = Mean(theCol)
 		EndIf
@@ -3289,11 +3314,14 @@ Function ReallyKillWaves(w)
     j=0
     do
       string column=StringFromList(j,table)
-      if(strlen(column))
+      if(!strlen(column))
+      	break
+      endif
+      if(cmpstr(column,name) == 0)
         RemoveFromTable/Z/W=$table $column
-        j+=1
-      else
         break
+      else
+      	j+=1
       endif
     while(1)
   endfor 
@@ -3815,10 +3843,13 @@ Function selectALL(control,mode)
 	endswitch
 End
 
+//Resolves the syntax used in the Cmd input for 'Run Cmd Line' function
+//Replaces data set references <DataSet> with the name of the wave
+//<DataSet>{wsn,wsi}
 Function/S resolveCmdLine(cmdLineStr,wsn,wsi)
 	String cmdLineStr
 	Variable wsn,wsi
-	
+
 	//WaveSet data
 	//ControlInfo/W=analysis_tools extFuncDS
 	//numWaveSets = GetNumWaveSets(S_Value)

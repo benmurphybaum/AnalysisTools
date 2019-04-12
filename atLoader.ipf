@@ -111,6 +111,9 @@ Function LoadAnalysisSuite([left,top])
 	DoWindow/C analysis_tools
 	ModifyPanel /W=analysis_tools, fixedSize= 1
 	
+	//Set the window hook for detecting mouse clicks
+	//SetWindow analysis_tools,hookevents=1,hook(atClickHook)=atClickHook
+	
 	//Make analysisTools package folder
 	If(!DataFolderExists("root:Packages:analysisTools"))
 		NewDataFolder root:Packages:analysisTools
@@ -417,6 +420,8 @@ Function LoadAnalysisSuite([left,top])
 	CheckBox RemoveLaserResponseCheck win=analysis_tools,pos={10,150},size={150,20},title="Remove Laser Response",disable=1
 	SetVariable spatialFilterCheck win=analysis_tools,pos={215,163},bodywidth=35,size={100,20},title="Pre Spatial Filter",value=_NUM:5,disable=1
 	SetVariable postSpatialFilter win=analysis_tools,pos={215,183},bodywidth=35,size={100,20},title="Post Spatial Filter",value=_NUM:3,disable=1
+	PopupMenu peakOrAreaMenu win=analysis_tools,pos={230,203},size={100,20},title="Type",value="Peak;Area",disable=1
+	
 	
 	//For Map threshold 
 	SetVariable mapThreshold win=analysis_tools,pos={20,60},size={100,20},title="Threshold",value=_NUM:0,disable=1
@@ -684,7 +689,7 @@ Function CreateControlLists(cmdList)
 	//ctrlList_dfMap = "bslnStVar;bslnEndVar;peakStVar;peakEndVar;BatchsizeVar;numtrialsVar;DarkValueVar;SmoothBox;SpaceFilterVar;SmoothFilterVar;"
 	//ctrlList_dfMap += "SpaceFilterBox;DarkSubtBox;NotSeqBox;ch1Check;ch2Check;ratioCheck"
 	ctrlList_dfMap = "ch1Check;ch2Check;ratioCheck;maskListPopUp;varianceMapCheck;peakStVar;peakEndVar;bslnStVar;bslnEndVar;histogramCheck;cleanUpNoise;"
-	ctrlList_dfMap += "RemoveLaserResponseCheck;SmoothFilterVar;SmoothBox;spatialFilterCheck;maskAllFoldersCheck;postSpatialFilter;cleanUpNoiseThresh;doDarkSubtract"
+	ctrlList_dfMap += "RemoveLaserResponseCheck;SmoothFilterVar;SmoothBox;spatialFilterCheck;maskAllFoldersCheck;postSpatialFilter;cleanUpNoiseThresh;doDarkSubtract;peakOrAreaMenu"
 
 	//Apply Map Threshold
 	String/G root:Packages:analysisTools:ctrlList_applyMapThreshold
