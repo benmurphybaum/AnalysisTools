@@ -1913,7 +1913,8 @@ Function getLineHook(s)
 					ControlInfo/W=analysis_tools peakEndVar
 					Variable stop = V_Value
 					SetScale/P y,DimOffset(theWave,2),DimDelta(theWave,2),theProfile
-					collapseLineProfile(theProfile,theWave,"max",start=start,stop=stop)
+					//collapseLineProfile(theProfile,theWave,"max",start=start,stop=stop)
+					collapseLineProfile(theProfile,theWave,"avg",start=start,stop=stop)
 				EndIf
 				
 				//∆F/F profile

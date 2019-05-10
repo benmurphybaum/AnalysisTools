@@ -851,18 +851,19 @@ Function GetROI()
 				
 				//Absolute fluorescence or delta fluorescence?
 				ControlInfo/W=analysis_tools dFAbsMenu
-				Variable dFAbs = V_Value - 1 //0 = ∆; 1 = Abs
+				Variable dFAbs = V_Value - 1 //0 = ∆; 1 = Abs; 2 = FFT
+				
 				
 				//Make ∆F/F or ∆G/R waves
 				If(cmpstr(whichList,"AT") == 0)
 					If(doRatio)
-						If(dFAbs)
+						If(dFAbs == 1)
 							dFname = theScanName + "_1_ROI" + theROI + "_absGR"
 						Else
 							dFname = theScanName + "_1_ROI" + theROI + "_dGR"
 						EndIf
 					Else
-						If(dFAbs)
+						If(dFAbs == 1)
 							dFname = theScanName + "_" + channel + "_ROI" + theROI + "_absF"
 						Else
 							dFname = theScanName + "_" + channel + "_ROI" + theROI + "_dF"
@@ -883,39 +884,89 @@ Function GetROI()
 					//∆G/R
 					
 					If(darkSubtract)
-						If(dFAbs)
+						If(dFAbs == 1)
 							//absolute fluorescence
 							dF = RawROI/(bsln2 - darkVal2)
 						Else
-							//change fluorescence
+							//change fluorescence for both ∆ and FFT modes
 							dF = (RawROI - bsln)/(bsln2 - darkVal2)
 						EndIf
+						
+						//calculate FFT if needed (0-10Hz range; 200 points; Hann windowing)
+						If(dFAbs == 2)
+							//Set scale
+							SetScale/P x,DimOffset(theScan,2),DimDelta(theScan,2),dF
+							
+							SetDataFolder GetWavesDataFolder(dF,1)
+							//execute the DFT macro
+							Execute/Q/Z "DFTMagPhase(\"" + NameOfWave(dF) + "\",2,0,10,200,1,1,1)" //(waveName,windowing (2=Hann),low Freq,high Freq,output points,linear/dB,getPhase,unwrap phase)
+							GetWindow kwTopWin activeSW
+							KillWindow/Z $S_Value
+						EndIf
 					Else
-						If(dFAbs)
+						If(dFAbs == 1)
 							//absolute fluorescence
-							dF = RawROI/bsln2
+							dF = RawROI/bsln2						
 						Else
-							//change fluorescence
+							//change fluorescence for both ∆ and FFT modes
 							dF = (RawROI - bsln)/bsln2
+							
+							//calculate FFT if needed (0-10Hz range; 200 points; Hann windowing)
+							If(dFAbs == 2)
+								//Set scale
+								SetScale/P x,DimOffset(theScan,2),DimDelta(theScan,2),dF
+				
+								SetDataFolder GetWavesDataFolder(dF,1)
+								//execute the DFT macro
+								Execute "DFTMagPhase(\"" + NameOfWave(dF) + "\",2,0,10,200,1,1,1)" //(waveName,windowing (2=Hann),low Freq,high Freq,output points,linear/dB,getPhase,unwrap phase)
+								GetWindow kwTopWin activeSW
+								KillWindow/Z $S_Value
+							EndIf
+							
 						EndIF
 					EndIf
 				Else
 					//∆F/F
 					If(darkSubtract)
-						If(dFAbs)
+						If(dFAbs == 1)
 							//absolute fluorescence
 							dF = RawROI - darkVal
 						Else
 							//change fluorescence
 							dF = (RawROI - bsln)/(bsln - darkVal) 
 						EndIf
+						
+						//calculate FFT if needed (0-10Hz range; 200 points; Hann windowing)
+						If(dFAbs == 2)
+							//Set scale
+							SetScale/P x,DimOffset(theScan,2),DimDelta(theScan,2),dF
+				
+							SetDataFolder GetWavesDataFolder(dF,1)
+							//execute the DFT macro
+							Execute "DFTMagPhase(" + NameOfWave(dF) + ",2,0,10,200,1,1,1)" //(waveName,windowing (2=Hann),low Freq,high Freq,output points,linear/dB,getPhase,unwrap phase)
+							GetWindow kwTopWin activeSW
+							KillWindow $S_Value
+						EndIf
+						
 					Else
-						If(dFAbs)
+						If(dFAbs == 1)
 							//absolute fluorescence
 							dF = RawROI
 						Else
 							//change fluorescence
 							dF = (RawROI - bsln)/bsln 
+						EndIf
+						
+						//calculate FFT if needed (0-10Hz range; 200 points; Hann windowing)
+						If(dFAbs == 2)
+							//Set scale
+							SetScale/P x,DimOffset(theScan,2),DimDelta(theScan,2),dF
+				
+							SetDataFolder GetWavesDataFolder(dF,1)
+							//execute the DFT macro
+							Execute "DFTMagPhase(" + NameOfWave(dF) + ",2,0,10,200,1,1,1)" //(waveName,windowing (2=Hann),low Freq,high Freq,output points,linear/dB,getPhase,unwrap phase)
+							GetWindow kwTopWin activeSW
+							KillWindow $S_Value
 						EndIf
 					EndIf
 				EndIf
@@ -3392,9 +3443,9 @@ Function dfMapMultiThread()
 						MultiThread dFPeakLoc[i][j] = V_MaxRowLoc
 						//averages 0.1 sec before and after the peak to get the final ∆G/R peak value
 						
-						ControlInfo/W=analysis_tools peakOrArea
+						ControlInfo/W=analysis_tools peakOrAreaMenu
 						If(!cmpstr(S_Value,"Peak"))
-							MultiThread dFPeakWave[i][j] = mean(theBeam,V_maxloc - 0.1,V_maxloc + 0.1)
+							MultiThread dFPeakWave[i][j] = mean(theBeam,V_maxloc - 0.025,V_maxloc + 0.025)
 						ElseIf(!cmpstr(S_Value,"Area"))
 							MultiThread dFPeakWave[i][j] = mean(theBeam,startTm,endTm)
 						EndIf
@@ -3633,7 +3684,7 @@ Function dfMapMultiThread()
 						MultiThread dFPeakLoc[i][j] = V_MaxRowLoc
 						
 						//averages 0.1 sec before and after the peak to get the final ∆F/F peak value
-						ControlInfo/W=analysis_tools peakOrArea
+						ControlInfo/W=analysis_tools peakOrAreaMenu
 						If(!cmpstr(S_Value,"Peak"))
 							MultiThread dFPeakWave[i][j] = mean(theBeam,V_maxloc - 0.1,V_maxloc + 0.1)
 						ElseIf(!cmpstr(S_Value,"Area"))

@@ -2279,7 +2279,7 @@ Function FillDMatrix(distanceWave,startROI)
 End
 
 Function fillROITable(roiTable)
-	Wave/T roiTable
+	Wave/Z/T roiTable
 	SetDataFolder root:
 		
 	SVAR ROIListStr = root:Packages:twoP:examine:ROIListStr
@@ -2573,8 +2573,12 @@ Function applyLineProfile()
 				//Rename line profile wave
 				lineProfileName = NameOfWave(theWave) + "_LP" + suffix
 				
+				
+				
+				String type = "pk" //"pk"
+				
 				If(doDF)
-					lineProfileName += "_dF"
+					lineProfileName += "_dF_" + type
 				EndIf
 				
 				If(WaveExists($outputProfileName))
@@ -2744,8 +2748,10 @@ Function applyLineProfile()
 		//Rename line profile wave
 		lineProfileName = NameOfWave(theWave) + "_LP"
 				
+		type = "pk"
+				
 		If(doDF)
-			lineProfileName += "_dF"
+			lineProfileName += "_dF_" + type 
 		EndIf
 				
 		If(WaveExists($outputProfileName))
@@ -2817,6 +2823,9 @@ Function collapseLineProfile(theProfile,theWave,type,[start,stop])
 			theProfile[i] = mean(theCol,V_maxLoc - 0.05,V_maxLoc + 0.05)
 		ElseIf(cmpstr(type,"avg") == 0)
 			theProfile[i] = Mean(theCol)
+		ElseIf(cmpstr(type,"area") == 0)
+			theProfile[i] = area(theCol,start,stop)
+		
 		EndIf
 	EndFor
 	
