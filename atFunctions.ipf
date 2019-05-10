@@ -6707,7 +6707,13 @@ Function doDynamicROI()
 		MultiThread maxProj += theImage[p][q][j]
 	EndFor
 	
-	maxProj /= frames
+	If(frames > 0)
+		maxProj /= frames
+	EndIf
+	
+	SetScale/P x,DimOffset(theImage,0),DimDelta(theImage,0),maxProj
+	SetScale/P y,DimOffset(theImage,1),DimDelta(theImage,1),maxProj
+	SetScale/P z,DimOffset(theImage,2),DimDelta(theImage,2),maxProj
 		
 	//Set note in maxProj to reference the original 3D wave
 	Note/K maxProj,NameOfWave(theImage)

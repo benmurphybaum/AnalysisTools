@@ -4029,6 +4029,12 @@ Function dROI_Hook(s)
 	Wave maxProj = root:Packages:analysisTools:maxProj
    Wave theImage = $note(maxProj)
    
+   If(DimSize(theImage,2) == 0)
+   	Variable dims = 2
+   Else
+   	dims = 3
+   EndIf
+   
    If(!WaveExists(maxProj))
    	return -1
    EndIf
@@ -4081,7 +4087,12 @@ Function dROI_Hook(s)
 		case 4: //mouse moved
 			//Correctly size the dynamic ROI wave to the number of frames in the image
 			Redimension/N=(DimSize(theImage,2)) dROI
-			dROI = 0
+			
+			If(DimSize(dROI,0) == 0)
+				Redimension/N=1 dROI
+			EndIf
+			
+			dROI = 0	
 			
 			//Draw for showing the ROI
 			SetDrawLayer/W=maxProjection/K UserFront
@@ -4092,14 +4103,23 @@ Function dROI_Hook(s)
 			
 			For(i=left;i<right;i+=1)
 				For(j=top;j<bottom;j+=1)
-					MatrixOP/FREE temp = beam(theImage,i,j)
-					If(numtype(temp[0]) == 2) //is nan
-						continue
+					If(dims == 3)
+						MatrixOP/FREE temp = beam(theImage,i,j)
+						If(numtype(temp[0]) == 2) //is nan
+							continue
+						EndIf
+						numPixels +=1
+						dROI += temp
+					ElseIf(dims == 2)
+						If(numtype(theImage[i][j]) == 2) //is nan
+							continue
+						EndIf
+						numPixels +=1
+						dROI += theImage[i][j]
 					EndIf
-					numPixels +=1
-					dROI += temp
 				EndFor
 			EndFor
+			
 			dROI /= numPixels
 			SetScale/P x,DimOffset(theImage,2),DimDelta(theImage,2),dROI
 			break
