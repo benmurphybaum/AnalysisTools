@@ -4063,9 +4063,9 @@ Function dROI_Hook(s)
 	yPix = ScaleToIndex(maxProj,yVal,0)
 	
 	//edges of the ROI
-	left = round(xPix - .5*size) 
+	left = ceil(xPix - .5*size) 
 	right = left + size
-	top = round(yPix - .5*size) 
+	top = ceil(yPix - .5*size) 
 	bottom = top + size
 	
 	leftAxis = IndexToScale(maxProj,left,0)
@@ -4101,6 +4101,7 @@ Function dROI_Hook(s)
 				EndFor
 			EndFor
 			dROI /= numPixels
+			SetScale/P x,DimOffset(theImage,2),DimDelta(theImage,2),dROI
 			break
 	endswitch
 End
