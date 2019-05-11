@@ -612,7 +612,7 @@ Function LoadAnalysisSuite([left,top])
 	CheckBox ch1Check,win=analysis_tools,pos={70,yPos},title="Ch1"
 	CheckBox ch2Check,win=analysis_tools,pos={110,yPos},title="Ch2"
 	CheckBox ratioCheck,win=analysis_tools,pos={150,yPos},title="Ratio"
-	PopUpMenu dFAbsMenu,win=analysis_tools,pos={10,yPos},value="∆;Abs",title="",disable=1
+	PopUpMenu dFAbsMenu,win=analysis_tools,pos={10,yPos},value="∆;Abs;S/T",title="",disable=1
 		
 	yPos += 20
 	CheckBox getPeaksCheck,win=analysis_tools,pos={10,yPos},title="Get Peaks"

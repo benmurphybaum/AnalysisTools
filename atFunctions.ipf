@@ -2537,633 +2537,9 @@ Function maxLayer(theWave)
 	EndFor
 End
 
-
-Function dfMapSimple()
-	SVAR scanListStr = root:Packages:twoP:examine:scanListStr
-	SVAR whichList = root:Packages:analysisTools:whichList
-	SVAR cdf = root:Packages:analysisTools:currentDataFolder
-	SVAR selWaveList = root:Packages:MBr:selWaveList
-	
-	Variable numChannels,i,j,k,m,b,c,frames,rows,cols
-	String scanPath = ""
-	String dFWaveName
-	Wave/T maskTable = root:Packages:analysisTools:maskTable
-	
-	SetDataFolder root:twoP_Scans
-	DFREF twoPScans = GetDataFolderDFR()
-	
-	
-	
-	numChannels = 0
-
-	//Get the range for finding the peak dF
-	Variable startTm,endTm,bslnStartTm,bslnEndTm
-	ControlInfo/W=analysis_tools peakStVar
-	startTm = V_Value
-	ControlInfo/W=analysis_tools peakEndVar
-	endTm = V_Value
-
-	ControlInfo/W=analysis_tools bslnStVar
-	bslnStartTm = V_Value
-	ControlInfo/W=analysis_tools bslnEndVar
-	bslnEndTm = V_Value
-	
-	ControlInfo/W=analysis_tools spatialFilterCheck
-	Variable spatialFilter = V_Value
-	
-	Variable s
-	
-	//Loop through the scans
-	For(s=0;s<ItemsInList(scanListStr,";");s+=1)
-		Variable timerRef = StartMSTimer
-		String dataFolder = "root:twoP_Scans:" + StringFromList(s,scanListStr,";")
-
-		
-		//Resolve the channels and get the scan name
-		ControlInfo/W=analysis_tools ch1Check
-		If(V_Value)
-			numChannels = 1
-			scanPath = dataFolder + ":" + StringFromList(s,scanListStr,";") + "_ch1"
-		EndIf
-		
-		ControlInfo/W=analysis_tools ch2Check
-		If(V_Value)
-			numChannels += 1
-		EndIf
-		
-		ControlInfo/W=analysis_tools ratioCheck
-		Variable doRatio = V_Value
-		
-		If(cmpstr(whichList,"AT") == 0) //only need channel selection if we're in scan mode (AT)
-			If(numChannels == 0 && doRatio != 1)
-				Abort "Must select a channel"
-			EndIf
-		ElseIf(cmpstr(whichList,"Browser") == 0)
-			scanPath = cdf + StringFromList(0,selWaveList,";")
-			dataFolder = cdf
-			numChannels = 1
-		EndIf
-		
-		If(doRatio)
-			numChannels = 1
-		EndIf
-		
-		print "-------"
-		
-		
-		//Loop through channels
-		For(c=0;c<numChannels;c+=1)
-		
-			If(doRatio)
-			
-			//////// ∆G/R MAPPING //////////////////////////
-			
-				//Green channel scan wave
-				scanPath = dataFolder + ":" + StringFromList(s,scanListStr,";") + "_ch1"
-	
-				//Can we find the wave?
-				If(DataFolderExists(dataFolder))
-					SetDataFolder $dataFolder
-				Else
-					Abort "Couldn't find the wave: " + scanPath
-				EndIf
-		
-				If(WaveExists($scanPath))
-					Wave ch1Wave = $scanPath
-				Else
-					Abort "Couldn't find the wave: " + scanPath
-				EndIf
-				
-				//Red channel scan wave
-				scanPath = dataFolder + ":" + StringFromList(s,scanListStr,";") + "_ch2"
-	
-				//Can we find the wave?
-				If(DataFolderExists(dataFolder))
-					SetDataFolder $dataFolder
-				Else
-					Abort "Couldn't find the wave: " + scanPath
-				EndIf
-		
-				If(WaveExists($scanPath))
-					Wave ch2Wave = $scanPath
-					Wave ch2Wave_alternate = $scanPath
-				Else
-					Abort "Couldn't find the wave: " + scanPath
-				EndIf
-				
-				//Wave dimensions
-				rows = DimSize(ch1Wave,0)
-				cols = DimSize(ch1Wave,1)
-				frames = DimSize(ch1Wave,2)
-						
-				//Cleans up some of the instrument noise that is plaguing these dF maps. 
-				ControlInfo/W=analysis_tools cleanUpNoise
-				Variable cleanNoise = V_Value
-				
-				ControlInfo/W=analysis_tools cleanUpNoiseThresh
-				Variable cleanNoiseThresh = V_Value
-				
-				If(cleanNoise)
-					Wave theWave = CleanUpNoise(ch1Wave,cleanNoiseThresh)	//threshold is in sdevs above the mean
-					Wave ch2Wave = CleanUpNoise(ch2Wave_alternate,cleanNoiseThresh)
-				EndIf
-				
-				
-				//Variance Map?
-				ControlInfo/W=analysis_tools varianceMapCheck
-				If(V_Value)	
-					MakeVarMap(theWave)
-				EndIf
-				
-				//Get mask wave
-				ControlInfo/W=analysis_tools maskAllFoldersCheck
-				Variable checkAllFolders = V_Value
-				ControlInfo/W=analysis_tools maskListPopUp	
-		
-				If(checkAllFolders)
-				//	String folderPath = "root:twoP_Scans:" + GetIndexedObjNameDFR(twoPScans,4,V_Value) + ":"
-					Wave theMask = $maskTable[V_Value-2]
-				Else
-					Wave theMask = $S_Value
-				EndIf
-				
-				If(!WaveExists(theMask))
-					Abort "Cannot find the mask wave"
-				EndIf
-				
-				Duplicate/FREE theMask,darkMask
-				Redimension/B/U darkMask
-				
-				//Get red channel baseline, spatial filter and temporal smooth it.
-				Duplicate/FREE/O ch2Wave,redBaselineMat
-				
-				//Filter the red baseline the same as the
-				// green channel will be filtered
-				MatrixOP/O redBaseline = sumBeams(redBaselineMat)/frames
-				MatrixFilter/N=3 median redBaseline
-							
-				//Set scales for red baseline
-				SetScale/P x,DimOffset(ch2Wave,0),DimDelta(ch2Wave,0),redBaseline
-				SetScale/P y,DimOffset(ch2Wave,1),DimDelta(ch2Wave,1),redBaseline
-				
-				//Find average dark value for red channel
-				ImageStats/R=darkMask redBaseline //gets dark value from the first frame of all non-masked pixels
-				Variable darkValue = 0.9*V_avg //estimate dark value slightly low to avoid it accidentally surpassing the dendrite baseline fluorescence.
-				
-				//Make time-varying dG/R Map Wave
-				dFWaveName = NameOfWave(ch1Wave) + "_dGR"
-				Duplicate/O ch1Wave,$dFWaveName
-				Wave dFWave = $dFWaveName
-				
-				Redimension/S/N=(rows,cols,frames) dFWave
-				dFWave = 0
-				
-				//Operate on temporary wave so raw data is never altered.
-				Duplicate/FREE/O theWave,temp
-				
-				//Spatial filter for each layer of the green channel.
-				
-				If(spatialFilter)
-					If(spatialFilter < 3)
-						DoAlert 0,"Spatial filter must be 3 or greater."
-						break
-					EndIf
-	
-					For(k=0;k<frames;k+=1)
-						MatrixOP/O/FREE theLayer = layer(temp,k)
-						MatrixFilter/N=(spatialFilter) median theLayer
-						temp[][][k] = theLayer[p][q][0]
-					EndFor
-				EndIf
-					
-				//Remove laser response loop for green channel
-				ControlInfo/W=analysis_tools RemoveLaserResponseCheck
-				Variable RemoveLaserResponse = V_Value
-	
-				For(i=0;i<rows;i+=1)
-					For(j=0;j<cols;j+=1)
-						If(darkMask[i][j] != 1)
-							continue
-						EndIf
-						MatrixOP/FREE/O/S theBeam = Beam(temp,i,j)
-						SetScale/P x,DimOffset(ch1Wave,2),DimDelta(ch1Wave,2),theBeam
-						
-						//Remove laser response from dF matrix wave for better baselining
-						If(RemoveLaserResponse)
-							Variable estimatePeakTm = 0.5*(endTm + startTm)
-							FlattenLaserResponse(theBeam,0,bslnEndTm,1,estimatePeakTm)
-						EndIf
-						
-						temp[i][j][] = theBeam[r]
-					EndFor	
-				EndFor	
-				
-				//Get green channel baseline fluorescence map
-				Make/FREE/O/N=(rows,cols) greenBaseline
-				
-				Variable startLayer,endLayer
-				startLayer = ScaleToIndex(ch1Wave,bslnStartTm,2)
-				endLayer = ScaleToIndex(ch1Wave,bslnEndTm,2)
-				
-				For(i=startLayer;i<endLayer;i+=1)
-					MatrixOP/FREE/O theLayer = layer(temp,i)
-					greenBaseline += theLayer
-				EndFor
-				greenBaseline /= (endLayer - startLayer)
-				
-	
-				//Eliminates the possibility of zero values in the dataset for dendrites in the mask, which all get converted to NaN at the end.
-				temp = (temp[p][q][r] == greenBaseline[p][q][0]) ? temp[p][q][r] + 1 : temp[p][q][r]
-				
-				//Calculate ∆G/R time-varying map
-				ControlInfo/W=analysis_tools doDarkSubtract
-				If(V_Value)
-					dFWave = (temp[p][q][r] - greenBaseline[p][q][0]) / (redBaseline[p][q][0] - darkValue)
-				Else
-					dFWave = (temp[p][q][r] - greenBaseline[p][q][0]) / redBaseline[p][q][0]
-				EndIf
-						
-				//Make peak ∆G/R and peak-time map waves
-				String dFPeakWaveName = dFWaveName + "_peak"
-				Make/O/N=(rows,cols) $dFPeakWaveName,$(dFPeakWaveName + "Loc")
-				Wave dFPeakWave = $dFPeakWaveName
-				Wave dFPeakLoc = $(dFPeakWaveName + "Loc")
-				dFPeakWave = gnoise(0.001)	
-				dFPeakLoc = 0
-				
-				//Temporal smoothing of the dF map prior to finding the peaks.
-				ControlInfo/W=analysis_tools SmoothBox
-				Variable didSmooth = V_Value
-				
-				If(didSmooth)
-					ControlInfo/W=analysis_tools SmoothFilterVar
-					Variable smoothVar = V_Value
-					Smooth/S=2/DIM=2 smoothVar,dFWave
-				EndIf
-				
-				//Getting the peak ∆G/R and its time point from a beam 
-				For(i=0;i<rows;i+=1)
-					For(j=0;j<cols;j+=1)
-						//only operates if the data is within the mask region to save time.
-						If(darkMask[i][j] != 1)
-							continue
-						EndIf
-						
-						MatrixOP/FREE/O theBeam = Beam(dFWave,i,j)
-						SetScale/P x,DimOffset(ch1Wave,2),DimDelta(ch1Wave,2),theBeam
-						WaveStats/Q/R=(startTm,endTm) theBeam
-						
-						dFPeakLoc[i][j] = V_MaxRowLoc
-						//averages 0.1 sec before and after the peak to get the final ∆G/R peak value
-						dFPeakWave[i][j] = mean(theBeam,V_maxloc - 0.1,V_maxloc + 0.1)
-					EndFor
-				EndFor
-				
-				//Clip the edges of the image with a mask, to remove the projector artifact
-				//theMask[0,10][] = 0
-				//theMask[rows-11,rows-1][] = 0
-				
-				//Clip unreasonably high values
-				//dFWave  = (dFWave > 100) ? 0 : dFWave
-				//dFWave = (dFWave < 0) ? 0 : dFWave
-				
-				//Set scales
-				SetScale/P x,DimOffset(ch1Wave,0),DimDelta(ch1Wave,0),dFPeakWave,dFPeakLoc,dFWave
-				SetScale/P y,DimOffset(ch1Wave,1),DimDelta(ch1Wave,1),dFPeakWave,dFPeakLoc,dFWave
-				SetScale/P z,DimOffset(ch1Wave,2),DimDelta(ch1Wave,2),dFWave
-							
-			Else
-			
-			//////// ∆F/F MAPPING //////////////////////////
-			
-				//If scanPath isn't assigned and we haven't aborted yet, it must be ch2
-				If(!strlen(scanPath) || c > 0)
-					scanPath = dataFolder + ":" + StringFromList(s,scanListStr,";") + "_ch2"
-				EndIf
-	
-				//Can we find the wave?
-				If(DataFolderExists(dataFolder))
-					SetDataFolder $dataFolder
-				Else
-					Abort "Couldn't find the wave: " + scanPath
-				EndIf
-		
-				If(WaveExists($scanPath))
-					Wave theWave = $scanPath
-				Else
-					Abort "Couldn't find the wave: " + scanPath
-				EndIf
-
-				
-				String theWaveName = NameOfWave(theWave)
-				
-				//Make the input scan 32 bit float, instead of unsigned 16 bit integer
-				Duplicate/FREE theWave,theWave32bit
-				Wave theWave = theWave32bit
-				Redimension/S theWave
-				
-				//Wave dimensions
-				frames = DimSize(theWave,2)
-				rows = DimSize(theWave,0)
-				cols = DimSize(theWave,1)
-			
-				
-				//Cleans up some of the instrument noise that is plaguing these dF maps. 
-				ControlInfo/W=analysis_tools cleanUpNoise
-				cleanNoise = V_Value
-				
-				ControlInfo/W=analysis_tools cleanUpNoiseThresh
-				cleanNoiseThresh = V_Value
-				
-				
-				If(cleanNoise)
-					Wave theWave = CleanUpNoise($theWaveName,cleanNoiseThresh)	//threshold is in sdevs above the mean
-					Redimension/S theWave
-				EndIf
-							
-				//theWave = (theWave > 50) ? mean(theWave) : theWave
-						
-				//convolution ROI wave
-				//Wave conv = root:ROI_analysis:convolution
-	
-				
-				//Variance Map?
-				ControlInfo/W=analysis_tools varianceMapCheck
-				If(V_Value)	
-					MakeVarMap(theWave)
-				EndIf
-				
-				//Get mask wave
-				ControlInfo/W=analysis_tools maskAllFoldersCheck
-				checkAllFolders = V_Value
-				ControlInfo/W=analysis_tools maskListPopUp	
-				
-				Variable scanPosition = WhichListItem("Scan",S_Value,"_")
-				String theScanStr = RemoveEnding(ParseFilePath(1,S_Value,"_",0,scanPosition+2),"_")
-				
-				DFREF theScanPath = root:twoP_Scans
-				
-				If(checkAllFolders)
-					//folderPath = "root:twoP_Scans:" + theScanStr + ":"
-					Wave theMask = $maskTable[V_Value-1]
-				Else
-					Wave theMask = $S_Value
-				EndIf
-				
-				If(!WaveExists(theMask))
-					Abort "Cannot find the mask wave"
-				EndIf
-				
-				Duplicate/FREE theMask,darkMask
-				Redimension/B/U darkMask
-			
-				//Find average dark value
-				ImageStats/R=darkMask/P=1 theWave
-				darkValue = 0.9*V_avg  //estimate dark value slightly low to avoid it accidentally surpassing the dendrite baseline fluorescence.
-				
-				//Make time-varying dF Map wave
-				dFWaveName = theWaveName + "_dF"
-				Duplicate/O theWave,$dFWaveName
-				Wave dFWave = $dFWaveName
-			
-				Redimension/S/N=(rows,cols,frames) dFWave
-				dFWave = 0	
-				
-				//Operate on temporary wave so raw data is never altered.
-				Duplicate/FREE/O theWave,temp
-				
-				//Spatial filter for each layer of the wave.
-				If(spatialFilter)
-					If(spatialFilter < 3)
-						DoAlert 0,"Spatial filter must be 3 or greater."
-						break
-					EndIf
-	
-					For(k=0;k<frames;k+=1)
-						MatrixOP/O/FREE theLayer = layer(temp,k)
-						MatrixFilter/N=(spatialFilter) median theLayer
-						temp[][][k] = theLayer[p][q][0]
-					EndFor
-				EndIf
-				
-			//	Duplicate/O/FREE temp,tempConv
-			//	tempConv = 0
-				
-				//Remove laser response loop
-				ControlInfo/W=analysis_tools RemoveLaserResponseCheck
-				RemoveLaserResponse = V_Value
-	
-				For(i=0;i<rows;i+=1)
-					For(j=0;j<cols;j+=1)
-						If(darkMask[i][j] != 1)
-							continue
-						EndIf
-				
-						MatrixOP/FREE/O/S theBeam = Beam(temp,i,j)
-						SetScale/P x,DimOffset(theWave,2),DimDelta(theWave,2),theBeam
-						
-				//		Duplicate/O/FREE conv,convBeam
-					//	Convolve/A theBeam,convBeam
-						
-						
-						//Remove laser response from dF matrix wave for better baselining
-						If(RemoveLaserResponse)
-							estimatePeakTm = 0.5*(endTm + startTm)
-							FlattenLaserResponse(theBeam,0,bslnEndTm,1,estimatePeakTm)
-						EndIf
-						
-						temp[i][j][] = theBeam[r]
-				//		tempConv[i][j][] = convBeam[r]
-					EndFor	
-				EndFor	
-				
-				//Get the baseline fluorescence map
-				Make/FREE/O/N=(rows,cols) greenBaseline
-				startLayer = ScaleToIndex(theWave,bslnStartTm,2)
-				endLayer = ScaleToIndex(theWave,bslnEndTm,2)
-				
-				greenBaseline = 0
-				
-				For(i=startLayer;i<endLayer;i+=1)
-					MatrixOP/FREE/O theLayer = layer(temp,i)
-					greenBaseline += theLayer
-				EndFor
-				greenBaseline /= (endLayer - startLayer)
-				
-				//Eliminates the possibility of zero values in the dataset for dendrites in the mask, which all get converted to NaN at the end.
-				temp = (temp[p][q][r] == greenBaseline[p][q][0]) ? temp[p][q][r] + 1 : temp[p][q][r]
-				
-				//Get the ∆F/F time series map with dark subtraction from the non-masked area
-				ControlInfo/W=analysis_tools doDarkSubtract
-				If(V_Value)
-					dFWave = (temp[p][q][r] - greenBaseline[p][q][0]) / (greenBaseline[p][q][0] - darkValue)
-				Else
-					dFWave = (temp[p][q][r] - greenBaseline[p][q][0]) / greenBaseline[p][q][0]
-				EndIf
-						
-				//Make waves for the peak and peak-time maps
-				dFPeakWaveName = dFWaveName + "_peak"
-				
-				If(strlen(dFPeakWaveName) > 28)
-					dFPeakWaveName = ReplaceString(StringFromList(0,dFPeakWaveName,"_"),dFPeakWaveName,"Scan")
-				EndIf
-				
-			//	dFPeakWaveName = "Scan_020_dF_peak"
-				
-				Make/O/N=(rows,cols) $dFPeakWaveName,$(dFPeakWaveName + "Loc")//,$(dFPeakWaveName + "dt"),$(dFWaveName + "conv")
-			//	Make/O/N=(rows,cols,frames) $(dFWaveName + "dt")
-				Wave dFPeakWave = $dFPeakWaveName
-				Wave dFPeakLoc = $(dFPeakWaveName + "Loc")
-			//	Wave dFDiff = $(dFWaveName + "dt")
-			//	Wave dFDiff_pk = $(dFPeakWaveName + "dt")
-			//	Wave dF_conv = $(dFWaveName + "conv")
-				
-				dFPeakWave = gnoise(0.001)
-				dFPeakLoc = 0
-			//	dFDiff = gnoise(0.001)
-				//dFDiff_pk = gnoise(0.001)
-				//dF_conv = gnoise(0.00001)
-				
-			//	Differentiate/DIM=2 dFWave/D=dfDiff
-				
-				//Temporal smoothing of the dF map prior to finding the peaks.
-				ControlInfo/W=analysis_tools SmoothBox
-				didSmooth = V_Value
-				
-				If(didSmooth)
-					ControlInfo/W=analysis_tools SmoothFilterVar
-					smoothVar = V_Value
-					Smooth/S=2/DIM=2 smoothVar,dFWave
-				EndIf
-					
-				//Getting the peak ∆F/F and its time point from a beam 
-				For(i=0;i<rows;i+=1)
-					For(j=0;j<cols;j+=1)
-						//only operates if the data is within the mask region to save time.
-						If(darkMask[i][j] != 1)
-							continue
-						EndIf
-						
-						MatrixOP/FREE/O/S theBeam = Beam(dFWave,i,j)
-						SetScale/P x,DimOffset(theWave,2),DimDelta(theWave,2),theBeam
-						WaveStats/Q/R=(startTm,endTm) theBeam
-						
-						dFPeakLoc[i][j] = V_MaxRowLoc
-						//averages 0.1 sec before and after the peak to get the final ∆F/F peak value
-						dFPeakWave[i][j] = mean(theBeam,V_maxloc - 0.5,V_maxloc + 0.5)
-						
-						//dFDiff_pk[i][j] = mean(theBeam,V_maxLoc-0.75,V_max+0.5) //get the average of the differential during the rising phase of the response.
-						
-					//	dF_conv[i][j] = WaveMax(dF_conv,startTm,endTm)
-						//dFPeakWave[i][j] = mean(theBeam,startTm,endTm)
-						//dFPeakWave[i][j] = V_avg
-					EndFor
-				EndFor
-				
-				//Set scales
-				SetScale/P x,DimOffset(theWave,0),DimDelta(theWave,0),dFPeakWave,dFPeakLoc,dFWave//,dFDiff,dFDiff_pk,dF_conv
-				SetScale/P y,DimOffset(theWave,1),DimDelta(theWave,1),dFPeakWave,dFPeakLoc,dFWave//,dFDiff,dFDiff_pk,dF_conv
-				SetScale/P z,DimOffset(theWave,2),DimDelta(theWave,2),dFWave//,dFDiff
-			EndIf
-			
-				//MASKING AND FINAL FILTERING - code common to ∆F and ∆G maps.
-				
-				//Clip the edges of the image with a mask, to remove the projector artifact
-				//theMask[0,10][] = 0
-				//theMask[rows-11,rows-1][] = 0
-				
-				//Clip unreasonably high values
-			   //dFWave  = (dFWave > 100) ? 0 : dFWave
-			   //dFWave = (dFWave < 0) ? 0 : dFWave
-			
-				//Additional spatial filter on the peak ∆F/F or ∆G/R map
-				ControlInfo/W=analysis_tools postSpatialFilter
-				MatrixFilter/N=(V_Value)/R=darkMask median dFPeakWave
-				//MatrixFilter/N=(V_Value)/R=darkMask median dFDiff_pk
-				
-				//If(doRatio)
-				//	MatrixFilter/N=(V_Value)/R=darkMask median dFPeakWave
-				//EndIf
-				//MatrixFilter/N=3 median dFPeakWave
-				
-				//Apply the mask
-				dFPeakWave *= theMask
-				dFPeakLoc *= theMask
-				//dFDiff_pk *= theMask
-				dFWave *= theMask[p][q][0]
-				//dFDiff *= theMask[p][q][0]
-				//dF_conv *= theMask
-				
-				dFWave = (dFWave == 0) ? nan : dFWave
-				dFPeakLoc = (dFPeakLoc == 0) ? nan : dFPeakLoc
-				dFPeakWave = (dFPeakWave == 0) ? nan : dFPeakWave
-			//	dFDiff_pk = (dFDiff_pk == 0) ? nan : dFDiff_pk
-			//	dFDiff = (dFDiff == 0) ? nan : dFDiff
-			//	dF_conv = (dF_conv == 0) ? nan : dF_conv
-				
-				//Make image histogram of peak fluorescence values
-				ControlInfo/W=analysis_tools histogramCheck
-				If(V_Value)
-					String histName = NameOfWave(dFWave) + "_hist"
-					
-				
-					If(doRatio)
-						Histogram/C/B={0,0.0002,150}/DEST=$histName dFPeakWave
-						Wave theHist = $histName
-						SetScale/P x,DimOffset(theHist,0),DimDelta(theHist,0),"∆G/R",theHist
-					Else
-						Histogram/C/B={0,0.002,150}/DEST=$histName dFPeakWave
-						Wave theHist = $histName
-						SetScale/P x,DimOffset(theHist,0),DimDelta(theHist,0),"∆F/F",theHist
-					EndIf
-				EndIf
-				
-			//Set notes for the parameters used on to create the map
-				For(b=0;b<3;b+=1)
-					If(b == 0)
-						Wave notedWave = dFWave
-					ElseIf(b == 1)
-						Wave notedWave = dFPeakWave
-					ElseIf(b == 2)
-						Wave notedWave = dFPeakLoc
-					EndIf 
-					
-					If(c==0 && numChannels == 1 && !doRatio)
-						Note/K notedWave,"TYPE:∆F/F"
-						Note notedWave,"CHANNEL:1"
-					ElseIf(c==2 && !doRatio)
-						Note/K notedWave,"TYPE:∆F/F"
-						Note/K notedWave,"CHANNEL:2"
-					ElseIf(doRatio)
-						Note/K notedWave,"TYPE:∆G/R"
-						Note/K notedWave,"CHANNEL:1/2"
-					EndIf
-					
-					Note notedWave,"BSL_START:" + num2str(bslnStartTm)
-					Note notedWave,"BSL_END:" + num2str(bslnEndTm)
-					Note notedWave,"PK_START:" + num2str(startTm)
-					Note notedWave,"PK_END:" + num2str(endTm)
-					If(didSmooth)
-						Note notedWave,"SMOOTH:" + num2str(smoothVar)
-					EndIf
-					Note notedWave,"SPATIAL:" + num2str(spatialFilter)
-					Note notedWave,"NOISE:" + num2str(cleanNoise)
-					Note notedWave,"LASER:" + num2str(removeLaserResponse)
-					Note notedWave,"MASK:" + NameOfWave(theMask)
-				EndFor	
-	
-		EndFor
-			If(doRatio)
-				print "∆G/R Map for " + scanPath + " in " + num2str(StopMSTimer(timerRef)/(10^6)) + "s" 
-			Else
-				print "∆F/F Map for " + scanPath + " in " + num2str(StopMSTimer(timerRef)/(10^6)) + "s" 
-			EndIf		
-			
-			KillWaves/Z redBaseline,greenBaseline
-	EndFor		
-End
-
-
+//Creates a spatial map of either the peak Ca response, area Ca response, or area/peak ratio
+//Select waves using the scan list.
+//Multithreaded for speed.
 Function dfMapMultiThread()
 	SVAR scanListStr = root:Packages:twoP:examine:scanListStr
 	SVAR whichList = root:Packages:analysisTools:whichList
@@ -3178,8 +2554,6 @@ Function dfMapMultiThread()
 	SetDataFolder root:twoP_Scans
 	DFREF twoPScans = GetDataFolderDFR()
 	
-	
-	
 	numChannels = 0
 
 	//Get the range for finding the peak dF
@@ -3236,7 +2610,6 @@ Function dfMapMultiThread()
 		EndIf
 		
 		print "-------"
-		
 		
 		//Loop through channels
 		For(c=0;c<numChannels;c+=1)
@@ -3415,6 +2788,15 @@ Function dfMapMultiThread()
 				Make/O/N=(rows,cols) $dFPeakWaveName,$(dFPeakWaveName + "Loc")
 				Wave dFPeakWave = $dFPeakWaveName
 				Wave dFPeakLoc = $(dFPeakWaveName + "Loc")
+				
+				//ZT edit - integral and area/peak index map waves
+				ControlInfo/W=analysis_tools peakOrAreaMenu
+				If(!cmpstr(S_Value,"Area/Peak"))
+					Make/O/N=(rows,cols) $(dFPeakWaveName + "int"),$(dFPeakWaveName + "idx")
+					Wave dFIntWave = $(dFPeakWaveName + "int")
+					Wave dFIndexWave = $(dFPeakWaveName + "idx")
+				EndIf
+				
 				MultiThread dFPeakWave = gnoise(0.001)	
 				MultiThread dFPeakLoc = 0
 				
@@ -3441,13 +2823,16 @@ Function dfMapMultiThread()
 						WaveStats/Q/R=(startTm,endTm) theBeam
 						
 						MultiThread dFPeakLoc[i][j] = V_MaxRowLoc
-						//averages 0.1 sec before and after the peak to get the final ∆G/R peak value
+						//averages 50 ms before and after the peak to get the final ∆G/R peak value
 						
 						ControlInfo/W=analysis_tools peakOrAreaMenu
 						If(!cmpstr(S_Value,"Peak"))
-							MultiThread dFPeakWave[i][j] = mean(theBeam,V_maxloc - 0.025,V_maxloc + 0.025)
+							MultiThread dFPeakWave[i][j] = mean(theBeam,V_maxloc - 0.05,V_maxloc + 0.05)
 						ElseIf(!cmpstr(S_Value,"Area"))
 							MultiThread dFPeakWave[i][j] = mean(theBeam,startTm,endTm)
+						ElseIf(!cmpstr(S_Value,"Area/Peak")) //for ZT
+							MultiThread dFIntWave[i][j] = area(theBeam,V_maxLoc - 0.05,V_maxLoc + 2.05) //2.1 s window for taking the area of the Ca response
+							MultiThread dFIndexWave[i][j] = (dFIntWave[i][j] / dFPeakWave[i][j])	//Sustained/transient index (area divided by the peak)
 						EndIf
 					EndFor
 				EndFor
@@ -3513,12 +2898,6 @@ Function dfMapMultiThread()
 					Wave theWave = CleanUpNoise($theWaveName,cleanNoiseThresh)	//threshold is in sdevs above the mean
 					Redimension/S theWave
 				EndIf
-							
-				//theWave = (theWave > 50) ? mean(theWave) : theWave
-						
-				//convolution ROI wave
-				//Wave conv = root:ROI_analysis:convolution
-	
 				
 				//Variance Map?
 				ControlInfo/W=analysis_tools varianceMapCheck
@@ -3579,9 +2958,6 @@ Function dfMapMultiThread()
 					EndFor
 				EndIf
 				
-			//	Duplicate/O/FREE temp,tempConv
-			//	tempConv = 0
-				
 				//Remove laser response loop
 				ControlInfo/W=analysis_tools RemoveLaserResponseCheck
 				RemoveLaserResponse = V_Value
@@ -3595,10 +2971,6 @@ Function dfMapMultiThread()
 						MatrixOP/FREE/O/S theBeam = Beam(temp,i,j)
 						SetScale/P x,DimOffset(theWave,2),DimDelta(theWave,2),theBeam
 						
-				//		Duplicate/O/FREE conv,convBeam
-					//	Convolve/A theBeam,convBeam
-						
-						
 						//Remove laser response from dF matrix wave for better baselining
 						If(RemoveLaserResponse)
 							estimatePeakTm = 0.5*(endTm + startTm)
@@ -3606,7 +2978,6 @@ Function dfMapMultiThread()
 						EndIf
 						
 						temp[i][j][] = theBeam[r]
-				//		tempConv[i][j][] = convBeam[r]
 					EndFor	
 				EndFor	
 				
@@ -3640,24 +3011,21 @@ Function dfMapMultiThread()
 				If(strlen(dFPeakWaveName) > 28)
 					dFPeakWaveName = ReplaceString(StringFromList(0,dFPeakWaveName,"_"),dFPeakWaveName,"Scan")
 				EndIf
-				
-			//	dFPeakWaveName = "Scan_020_dF_peak"
-				
-				Make/O/N=(rows,cols) $dFPeakWaveName,$(dFPeakWaveName + "Loc")//,$(dFPeakWaveName + "dt"),$(dFWaveName + "conv")
-			//	Make/O/N=(rows,cols,frames) $(dFWaveName + "dt")
+								
+				Make/O/N=(rows,cols) $dFPeakWaveName,$(dFPeakWaveName + "Loc")
 				Wave dFPeakWave = $dFPeakWaveName
 				Wave dFPeakLoc = $(dFPeakWaveName + "Loc")
-			//	Wave dFDiff = $(dFWaveName + "dt")
-			//	Wave dFDiff_pk = $(dFPeakWaveName + "dt")
-			//	Wave dF_conv = $(dFWaveName + "conv")
 				
+				//ZT edit - area and area/peak map waves
+				ControlInfo/W=analysis_tools peakOrAreaMenu
+				If(!cmpstr(S_Value,"Area/Peak"))
+					Make/O/N=(rows,cols) $(dFPeakWaveName + "int"),$(dFPeakWaveName + "idx")
+					Wave dFIntWave = $(dFPeakWaveName + "int")
+					Wave dFIndexWave = $(dFPeakWaveName + "idx")
+				EndIf
+	
 				MultiThread dFPeakWave = gnoise(0.001)
 				MultiThread dFPeakLoc = 0
-			//	dFDiff = gnoise(0.001)
-				//dFDiff_pk = gnoise(0.001)
-				//dF_conv = gnoise(0.00001)
-				
-			//	Differentiate/DIM=2 dFWave/D=dfDiff
 				
 				//Temporal smoothing of the dF map prior to finding the peaks.
 				ControlInfo/W=analysis_tools SmoothBox
@@ -3683,19 +3051,17 @@ Function dfMapMultiThread()
 						
 						MultiThread dFPeakLoc[i][j] = V_MaxRowLoc
 						
-						//averages 0.1 sec before and after the peak to get the final ∆F/F peak value
+						//averages 50ms before and after the peak to get the final ∆F/F peak value
 						ControlInfo/W=analysis_tools peakOrAreaMenu
 						If(!cmpstr(S_Value,"Peak"))
-							MultiThread dFPeakWave[i][j] = mean(theBeam,V_maxloc - 0.1,V_maxloc + 0.1)
+							MultiThread dFPeakWave[i][j] = mean(theBeam,V_maxloc - 0.05,V_maxloc + 0.05)
 						ElseIf(!cmpstr(S_Value,"Area"))
 							MultiThread dFPeakWave[i][j] = mean(theBeam,startTm,endTm)
+						ElseIf(!cmpstr(S_Value,"Area/Peak")) //for ZT
+							MultiThread dFIntWave[i][j] = area(theBeam,V_maxLoc - 0.05,V_maxLoc + 2.05) //2.1 s window for taking the area of the Ca response
+							MultiThread dFIndexWave[i][j] = (dFIntWave[i][j] / dFPeakWave[i][j])	//Sustained/transient index (area divided by the peak)
 						EndIf
-						
-						//dFDiff_pk[i][j] = mean(theBeam,V_maxLoc-0.75,V_max+0.5) //get the average of the differential during the rising phase of the response.
-						
-					//	dF_conv[i][j] = WaveMax(dF_conv,startTm,endTm)
-						//dFPeakWave[i][j] = mean(theBeam,startTm,endTm)
-						//dFPeakWave[i][j] = V_avg
+					
 					EndFor
 				EndFor
 				
@@ -3707,39 +3073,32 @@ Function dfMapMultiThread()
 			
 				//MASKING AND FINAL FILTERING - code common to ∆F and ∆G maps.
 				
-				//Clip the edges of the image with a mask, to remove the projector artifact
-				//theMask[0,10][] = 0
-				//theMask[rows-11,rows-1][] = 0
-				
-				//Clip unreasonably high values
-			   //dFWave  = (dFWave > 100) ? 0 : dFWave
-			   //dFWave = (dFWave < 0) ? 0 : dFWave
-			
 				//Additional spatial filter on the peak ∆F/F or ∆G/R map
 				ControlInfo/W=analysis_tools postSpatialFilter
 				Variable postSpatial = V_Value
 				MatrixFilter/N=(postSpatial)/R=darkMask median dFPeakWave
-				//MatrixFilter/N=(V_Value)/R=darkMask median dFDiff_pk
-				
-				//If(doRatio)
-				//	MatrixFilter/N=(V_Value)/R=darkMask median dFPeakWave
-				//EndIf
-				//MatrixFilter/N=3 median dFPeakWave
 				
 				//Apply the mask
 				MultiThread dFPeakWave *= theMask
 				MultiThread dFPeakLoc *= theMask
-				//dFDiff_pk *= theMask
 				MultiThread dFWave *= theMask[p][q][0]
-				//dFDiff *= theMask[p][q][0]
-				//dF_conv *= theMask
+				
+				//Apply mask to optional area/peak maps and the area map
+				ControlInfo/W=analysis_tools peakOrAreaMenu
+				String measureType = S_Value
+				If(!cmpstr(measureType,"Area/Peak"))
+					MultiThread dFIntWave *= theMask
+					MultiThread dFIndexWave *= theMask
+					MultiThread dFIntWave = (dFIntWave == 0) ? nan : dFIntWave
+					MultiThread dFIndexWave = (dFIndexWave == 0) ? nan : dFIndexWave
+					Variable numMaps = 5
+				Else
+					numMaps = 3
+				EndIf
 				
 				MultiThread dFWave = (dFWave == 0) ? nan : dFWave
 				MultiThread dFPeakLoc = (dFPeakLoc == 0) ? nan : dFPeakLoc
 				MultiThread dFPeakWave = (dFPeakWave == 0) ? nan : dFPeakWave
-			//	dFDiff_pk = (dFDiff_pk == 0) ? nan : dFDiff_pk
-			//	dFDiff = (dFDiff == 0) ? nan : dFDiff
-			//	dF_conv = (dF_conv == 0) ? nan : dF_conv
 				
 				//Make image histogram of peak fluorescence values
 				ControlInfo/W=analysis_tools histogramCheck
@@ -3759,13 +3118,17 @@ Function dfMapMultiThread()
 				EndIf
 				
 			//Set notes for the parameters used on to create the map
-				For(b=0;b<3;b+=1)
+				For(b=0;b<numMaps;b+=1)
 					If(b == 0)
 						Wave notedWave = dFWave
 					ElseIf(b == 1)
 						Wave notedWave = dFPeakWave
 					ElseIf(b == 2)
 						Wave notedWave = dFPeakLoc
+					ElseIf(b == 3)
+						Wave notedWave = dFIntWave
+					ElseIf(b == 4)
+						Wave notedWave = dFIndexWave
 					EndIf 
 					
 					If(c==0 && numChannels == 1 && !doRatio)
@@ -3779,6 +3142,7 @@ Function dfMapMultiThread()
 						Note/K notedWave,"CHANNEL:1/2"
 					EndIf
 					
+					Note notedWave,"MEASURE:" + measureType
 					Note notedWave,"BSL_START:" + num2str(bslnStartTm)
 					Note notedWave,"BSL_END:" + num2str(bslnEndTm)
 					Note notedWave,"PK_START:" + num2str(startTm)
@@ -6711,9 +6075,9 @@ Function doDynamicROI()
 		maxProj /= frames
 	EndIf
 	
-	SetScale/P x,DimOffset(theImage,0),DimDelta(theImage,0),maxProj
-	SetScale/P y,DimOffset(theImage,1),DimDelta(theImage,1),maxProj
-	SetScale/P z,DimOffset(theImage,2),DimDelta(theImage,2),maxProj
+//	SetScale/P x,DimOffset(theImage,0),DimDelta(theImage,0),maxProj
+//	SetScale/P y,DimOffset(theImage,1),DimDelta(theImage,1),maxProj
+//	SetScale/P z,DimOffset(theImage,2),DimDelta(theImage,2),maxProj
 		
 	//Set note in maxProj to reference the original 3D wave
 	Note/K maxProj,NameOfWave(theImage)
