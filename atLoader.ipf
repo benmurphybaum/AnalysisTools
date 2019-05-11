@@ -420,7 +420,7 @@ Function LoadAnalysisSuite([left,top])
 	CheckBox RemoveLaserResponseCheck win=analysis_tools,pos={10,150},size={150,20},title="Remove Laser Response",disable=1
 	SetVariable spatialFilterCheck win=analysis_tools,pos={215,163},bodywidth=35,size={100,20},title="Pre Spatial Filter",value=_NUM:5,disable=1
 	SetVariable postSpatialFilter win=analysis_tools,pos={215,183},bodywidth=35,size={100,20},title="Post Spatial Filter",value=_NUM:3,disable=1
-	PopupMenu peakOrAreaMenu win=analysis_tools,pos={230,203},size={100,20},title="Type",value="Peak;Area",disable=1
+	PopupMenu peakOrAreaMenu win=analysis_tools,pos={230,203},size={100,20},title="Type",value="Peak;Area;Area/Peak",disable=1
 	
 	
 	//For Map threshold 
@@ -612,7 +612,7 @@ Function LoadAnalysisSuite([left,top])
 	CheckBox ch1Check,win=analysis_tools,pos={70,yPos},title="Ch1"
 	CheckBox ch2Check,win=analysis_tools,pos={110,yPos},title="Ch2"
 	CheckBox ratioCheck,win=analysis_tools,pos={150,yPos},title="Ratio"
-	PopUpMenu dFAbsMenu,win=analysis_tools,pos={10,yPos},value="∆;Abs;S/T",title="",disable=1
+	PopUpMenu dFAbsMenu,win=analysis_tools,pos={10,yPos},value="∆;Abs",title="",disable=1
 		
 	yPos += 20
 	CheckBox getPeaksCheck,win=analysis_tools,pos={10,yPos},title="Get Peaks"
@@ -1014,8 +1014,6 @@ Function ChangeControls(currentCmd,prevCmd)
 			break
 		case "dF Map":
 			SVAR ctrlList = root:Packages:analysisTools:ctrlList_dfMap
-			//runCmdStr = "dFMaps()"
-			//runCmdStr = "dfMapSimple()"
 			runCmdStr = "dfMapMultiThread()"
 			break
 		case "Average":
