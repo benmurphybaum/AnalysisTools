@@ -1263,6 +1263,12 @@ Function/S resolveListItems(theList,separator)
 			first = StringFromList(0,theListItem,"-")
 			last = StringFromList(1,theListItem,"-")
 			
+			If(!strlen(first) || !strlen(last))
+				//its a negative number, not a range
+				outList += theListItem + separator
+				continue
+			EndIf
+			
 			For(k=str2num(first);k<str2num(last) + 1;k+=1)
 				outList += num2str(k) + separator
 			EndFor

@@ -1965,6 +1965,7 @@ Function filterROI()
 			theROI = StringFromList(i,list,",") + "_y"
 			ModifyGraph/W=$theGraph rgb($theROI)=(65535,65535,0)
 		EndFor
+		
 	EndIf
 End
 
@@ -6103,4 +6104,138 @@ Function doDynamicROI()
 	//Set the window hook function
 	SetWindow maxProjection,hook(droiHook) = dROI_Hook
 
+End
+
+
+//Projects data onto PCA eigenvectors using dot product
+Function projectPCA(eigen,dataMatrix)
+	Wave eigen//multidimensional wave holding eigenvalues from PCA
+	Wave dataMatrix//matrix data of input parameter waves, i.e. the raw data used for PCA
+	
+	Variable numWaves = DimSize(dataMatrix,1)
+	Variable i,j
+	
+	Make/O/N=(numWaves) c00,c10 //projection coordinates for each data sample
+	Wave c00 = c00
+	Wave c10 = c10
+	
+	Make/FREE/N=(DimSize(dataMatrix,0)) theWave
+	
+	For(i=0;i<numWaves;i+=1)
+		theWave = dataMatrix[p][i] //extract each parameter wave from the data matrix
+		
+		//extract the eigenvectors for the first two PCA components
+		Make/FREE/N=(DimSize(theWave,0)) eigen1,eigen2 
+		eigen1 = eigen[p][0]
+		eigen2 = eigen[p][1]
+		
+		//standardize the waves
+		MatrixOP/O $(NameOfWave(theWave) + "_std") = normalize(subtractMean(theWave,1))
+		Wave stdWave = $(NameOfWave(theWave) + "_std")
+		
+		//dot product of eigenvector with the parameter wave, i.e. raw data used for PCA
+		//this outputs the x/y coordinates of each wave projected onto the first two PCA components
+		MatrixOP/FREE coordinate = eigen1.stdWave
+		c00[i] = coordinate[0]
+		MatrixOP/FREE coordinate = eigen2.stdWave
+		c10[i] = coordinate[0]
+	EndFor
+End
+
+Function matrixSort(matrix,key)
+	Wave matrix,key //key is 1D wave that is used to sort the matrix with
+	Variable i
+	
+	Wave/T roiTable = root:roiTable
+	
+	If(DimSize(roiTable,0) != DimSize(matrix,0))
+		Abort "ROI table must have same number of points as the square matrix X and Y dimensions"
+	EndIf
+	
+	For(i=0;i<DimSize(matrix,0);i+=1)
+		SetDimLabel 0,i,$roiTable[i],matrix
+		SetDimLabel 1,i,$roiTable[i],matrix
+	EndFor
+	
+	Duplicate/O matrix,$(NameOfWave(matrix) + "_sort")
+	Wave sorted = $(NameOfWave(matrix) + "_sort")
+	sorted = 0
+	
+	//Sort the matrix according to the key
+	Duplicate /O key Sorting_Index; Sorting_Index=p
+   Sort key,Sorting_Index // Create a sorting index to use to swap out rows (and columns).  
+   sorted = matrix[Sorting_Index[p]][Sorting_Index[q]] // Shuffle rows (and columns).  
+	
+	
+	//duplicate the ROI table to make a sorted version
+	Duplicate/T/O roiTable,roiTable_sort
+	Wave/T roiTable_sort = roiTable_sort
+	roiTable_sort = roiTable[Sorting_Index[p]]
+	//make wave for the location of the sorted roiTable, which is just linear
+	Make/O/N=(DimSize(roiTable_sort,0)) roiTable_sort_loc = x
+	
+	For(i=0;i<DimSize(matrix,0);i+=1)
+		SetDimLabel 0,i,$roiTable[Sorting_Index[i]],sorted
+		SetDimLabel 1,i,$roiTable[Sorting_Index[i]],sorted
+	EndFor
+End
+
+//extracts a column/row from the correlation matrix, and organizes it by largest to smallest correlation
+//output is roi_extract, which has the name of the ROIs and their correlation values, all sorted.
+Function getROI_Corr(matrix,roiTable,theRow)
+	Wave matrix//sorted correlation matrix
+	Wave/T roiTable//sorted ROI table to match the sorted matrix
+	Variable theRow//row/col to extract and sort by the max
+	
+	SetDataFolder GetWavesDataFolder(matrix,1)
+	
+	Make/O/N=(DimSize(matrix,0),2)/T roi_extract
+	Wave/T roi_extract
+	
+	roi_extract[][1] = num2str(matrix[p][theRow])
+	roi_extract[][0] = roiTable[p]
+	
+	Make/FREE/N=(DimSize(matrix,0)) sortKey = str2num(roi_extract[p][1])
+	SortColumns/R keyWaves={sortKey},sortWaves={roi_extract}
+
+End
+
+//input is a correlation matrix.
+//sorts each column in the matrix from highest to lowest correlation
+//makes a mirrored matrix that has the corresponding ROI names
+Function sortCorrMatrix(matrix,roiTable)
+	Wave matrix //correlation matrix
+	Wave/T roiTable //contains sorted list of ROIs that correspond to the indices of the matrix
+	Variable col,row,i,j 
+	
+	col = DimSize(matrix,1)
+	row = DimSize(matrix,0)
+	
+	//make output waves
+	SetDataFolder GetWavesDataFolder(matrix,1)
+	String outMatrixName = NameOfWave(matrix) + "_Hi2Low"
+	String ROIMatrixName = NameOfWave(matrix) + "_Hi2Low_ROIs"
+	Make/O/N=(row,col) $outMatrixName
+	Make/O/T/N=(row,col) $ROIMatrixName
+	
+	Wave outMatrix = $outMatrixName
+	Wave/T roiMatrix = $ROIMatrixName
+	
+	//will hold the column data
+	Make/FREE/N=(row) tempData
+	Make/T/FREE/N=(row) tempROI
+	
+	//sort each column of the matrix and put in output matrices
+	For(i=0;i<col;i+=1)
+		tempROI = roiTable
+		tempData = matrix[p][i]
+		
+		Sort/R tempData,tempROI//sort ROI names
+		Sort/R tempData,tempData//sort correlation values
+		
+		//fill the matrices
+		roiMatrix[][i] = tempROI[p]
+		outMatrix[][i] = tempData[p]
+	EndFor
+	
 End

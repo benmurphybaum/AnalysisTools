@@ -142,6 +142,42 @@ Function addDataSet(dataSetName,[selection])
 			return 0
 		EndIf
 		numWaves = ItemsInList(fullPath,";")
+		
+		//Does the data set name already exist?
+		If(tableMatch(dataSetName,dataSetNames) != -1)
+			currentNumSets = DimSize(dataSetNames,0)			
+			Variable index = tableMatch(dataSetName,dataSetNames)
+			ListBox dataSetListBox win=analysis_tools,selrow=index
+			
+			Wave/T dataSetWave = $("root:Packages:analysisTools:DataSets:DS_" + dataSetName)
+			Wave/T ogdataSetWave = $("root:Packages:analysisTools:DataSets:ogDS_" + dataSetName)
+			Redimension/N=(ItemsInList(fullPath,";")) dataSetWave,ogdataSetWave
+			
+			//Fill the data set wave
+			For(i=0;i<numWaves;i+=1)
+				If(strlen(StringFromList(i,fullPath,";")) == 0)
+					continue
+				EndIf	
+				dataSetWave[i] = StringFromList(i,fullPath,";")
+			EndFor
+			ogdataSetWave = dataSetWave
+			
+			//clear filters and matchlist
+			Wave/T dsFilters = root:Packages:analysisTools:DataSets:dsFilters
+			dsFilters[index][1] = ";;;;;;;;;;"
+			clearFilterSet()
+			
+			fillFilterTable()
+		
+			//Reload the data set names
+			GetDataSetNames()
+			
+			SVAR DSNames = root:Packages:analysisTools:DataSets:DSNames
+			DSNames = "--None--;--Scan List--;--Item List--;" + textWaveToStringList(dataSetNames,";")
+				
+			return 0
+		EndIf
+		
 	Else
 		//Get the wave paths from the match list box
 		ControlInfo/W=analysis_tools matchListBox
@@ -174,7 +210,7 @@ Function addDataSet(dataSetName,[selection])
 		//Does the data set name already exist?
 		If(tableMatch(dataSetName,dataSetNames) != -1)
 			currentNumSets = DimSize(dataSetNames,0)			
-			Variable index = tableMatch(dataSetName,dataSetNames)
+		   index = tableMatch(dataSetName,dataSetNames)
 			ListBox dataSetListBox win=analysis_tools,selrow=index
 		Else
 			currentNumSets = DimSize(dataSetNames,0)
@@ -926,6 +962,60 @@ Function setWaveGrouping(original,ds)
 	
 	ControlInfo/W=analysis_tools waveGrouping
 	String grouping = S_Value
+	
+	//extract /WG and /WSI and /WSN flags
+	//if there is no flag, the entry is treated as a wave grouping
+	//if there are flags, wave grouping can be placed prior to /WSI and /WSN flags and be given no flag, 
+	//or it can be given the /WG flag and placed anywhere in the entry
+	
+	//Perform the filtering/grouping in order of appearance
+	String itemStr = "",flag = "",value=""
+	Variable numItems = ItemsInList(grouping,"/")
+	For(i=0;i<numItems;i+=1)
+		itemStr = StringFromList(i,grouping,"/")
+		flag = StringFromList(0,itemStr,"=")
+		value = StringFromList(1,itemStr,"=")
+		
+		//itemize the list ('1-5' becomes '1,2,3,4,5')
+		If(strlen(value))
+			value = resolveListItems(value,",")
+		EndIf
+		
+		//filter or sort the data set, depending on the flag
+		strswitch(flag)
+			case "WG":
+				sortByWaveGroup(original,ds,value)
+				break
+			case "WSI":
+				filterByWaveSetIndex(ds,value)
+				break
+			case "WSN":
+				//ds = filterByWaveSetNumber(ds,value)
+				break
+			default:
+				sortByWaveGroup(original,ds,itemStr)
+				break
+		endswitch
+	EndFor
+	
+	
+	return 0
+	
+	String wsi_str = StringByKey("WSI",grouping,"=","/")
+	If(strlen(wsi_str))
+		grouping = ReplaceString("/WSI=" + wsi_str,grouping,"")
+	EndIf
+	
+	String wsn_str = StringByKey("WSN",grouping,"=","/")
+	If(strlen(wsn_str))
+		grouping = ReplaceString("/WSN=" + wsn_str,grouping,"")
+	EndIf
+	
+	String wg_str = StringByKey("WG",grouping,"=","/")
+	If(strlen(wg_str))
+		grouping = wg_str
+	EndIf
+	
 	numGroupings = ItemsInList(grouping,",")
 	numWaves = DimSize(ds,0)
 	
@@ -1038,6 +1128,176 @@ Function setWaveGrouping(original,ds)
 	EndFor
 End
 
+Function sortByWaveGroup(original,ds,value)
+	Wave/T original
+	Wave/T ds
+	String value
+	
+	Variable numGroupings,numWaves,item,i,j,k,wsn,count
+	String term,name,matchName,matchTerm,dataSetName
+	
+	//Get data set name
+	dataSetName = StringFromList(1,NameOfWave(ds),"_")
+
+	numGroupings = ItemsInList(value,",")
+	numWaves = DimSize(ds,0)
+	
+	//make working waves
+	Make/T/FREE/N=(numWaves) tempDS
+	Make/FREE/N=(numWaves) matched
+	
+	matched = -1
+	//wsn = 0
+	
+	For(i=0;i<numGroupings;i+=1)
+		wsn = 0
+		item = str2num(StringFromList(i,value,","))
+		switch(item)
+			case -2:
+				//group all together
+				For(j=DimSize(ds,0)-1;j>-1;j-=1) //go backwards
+					If(stringmatch(ds[j],"*WSN*"))
+						DeletePoints j,1,ds
+					EndIf
+				EndFor
+				//Redimension/N=(DimSize(original,0)) ds
+				//ds = original
+				break
+			default:
+				//group by the index
+
+				//If the data set is already grouped, must do next grouping within that structure
+				Variable m,numWaveSets = GetNumWaveSets(dataSetName)
+				String wsDims = GetWaveSetDims(dataSetName)
+				numWaves = DimSize(ds,0)
+				
+				//make fresh working waves
+				Make/T/FREE/N=(numWaves) tempDS
+				Make/FREE/N=(numWaves) matched
+				Make/T/FREE/N=(DimSize(ds,0)) original2
+				original2 = ds
+				
+				matched = -1	
+				count = 0
+				
+				For(m=0;m<numWaveSets;m+=1)
+					//uses block of waves from each subsequent waveset
+					numWaves = str2num(StringFromList(m,wsDims,";"))
+					String theWaves = getWaveSet(dataSetName,wsn=m)
+					
+					For(j=0;j<numWaves;j+=1)
+						
+						If(matched[j + count] != -1)
+							continue
+						EndIf
+						
+						//name = ParseFilePath(0,ds[j],":",1,0)
+						name = ParseFilePath(0,StringFromList(j,theWaves,";"),":",1,0)
+						term = StringFromList(item,name,"_")
+						
+						For(k=0;k<numWaves;k+=1)
+							If(matched[k + count] != -1)
+								continue
+							EndIf
+							//matchName = ParseFilePath(0,ds[k],":",1,0)
+							matchName = ParseFilePath(0,StringFromList(k,theWaves,";"),":",1,0)
+							matchTerm = StringFromList(item,matchName,"_")
+						
+							If(!cmpstr(term,matchTerm))
+								matched[k + count] = wsn
+							EndIf	
+							
+						EndFor
+						wsn += 1
+					EndFor
+					count += numWaves
+				EndFor
+				
+				//Label first wave set, if there are more than 1
+				count = 0
+
+				//make copy of it without the wave set labels
+				Variable size = DimSize(original2,0)
+				For(j=0;j<size;j+=1)
+					If(stringmatch(original2[j],"*WSN*"))
+						DeletePoints j,1,original2
+						j -= 1
+						size -= 1
+					EndIf
+				EndFor
+				
+				If(wsn > 0)
+					InsertPoints 0,1,tempDS
+					tempDS[count] = "----WSN 0----"
+					count += 1
+				EndIf
+				
+				//sort data set
+				numWaves = DimSize(original,0)
+								
+				For(j=0;j<wsn;j+=1)
+					For(k=0;k<numWaves;k+=1)
+						If(matched[k] == j)
+							tempDS[count] = original2[k]
+							count +=1
+						EndIf	
+					EndFor
+					
+					If(j<wsn-1)
+						InsertPoints count,1,tempDS
+						tempDS[count] = "----WSN " + num2str(j+1) + "----"
+					EndIf
+					count+=1
+				EndFor
+				
+				Redimension/N=(DimSize(tempDS,0)) ds
+				ds = tempDS
+		endswitch
+	EndFor
+End
+
+
+Function filterByWaveSetIndex(ds,value)
+	Wave/T ds
+	String value
+	Variable i,j,count,endPt,startPt,numWaveSets,waveSetSize,totalSize = DimSize(ds,0)
+	String wsDims = "",waveEntry = ""
+	
+	//Get data set name
+	String dataSetName = StringFromList(1,NameOfWave(ds),"_")
+	
+	value = "," + value//put in starting comma for matching purposes
+	
+	//dimensions of current organization
+	wsDims = getWaveSetDims(dataSetName)
+	numWaveSets = ItemsInList(wsDims,";")
+	
+	If(numWaveSets == 1)
+		Variable offset = 0
+	Else
+		offset = 1
+	EndIf
+	
+	For(j=numWaveSets-1;j>-1;j-=1) //go backwards
+		waveSetSize = str2num(StringFromList(j,wsDims,";"))
+		
+		count = waveSetSize - 1
+		
+		//start and end indices of each waveset, start is high, end is low.
+		endPt = totalSize - (numWaveSets - j)*waveSetSize -  (numWaveSets - (j + 1)) * offset //offset is only used when there is more than 1 waveset
+		startPt = endPt + waveSetSize - 1
+		
+		For(i=startPt;i>endPt-1;i-=1) //go backwards
+			//If the wsi is not in the flag value, delete from dataset
+			If(!StringMatch(value,"*," + num2str(count) + ",*"))
+				DeletePoints i,1,ds
+			EndIf
+			count -= 1
+		EndFor
+	EndFor
+	
+
+End
 
 //updates the wave list box to show the contents of the selected data set
 Function updateDSListBox(ds)
