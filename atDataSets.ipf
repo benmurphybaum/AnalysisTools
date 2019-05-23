@@ -990,7 +990,7 @@ Function setWaveGrouping(original,ds)
 				filterByWaveSetIndex(ds,value)
 				break
 			case "WSN":
-				//ds = filterByWaveSetNumber(ds,value)
+				filterByWaveSetNumber(ds,value)
 				break
 			default:
 				sortByWaveGroup(original,ds,itemStr)
@@ -1297,6 +1297,40 @@ Function filterByWaveSetIndex(ds,value)
 	EndFor
 	
 
+End
+
+Function filterByWaveSetNumber(ds,value)
+	Wave/T ds
+	String value
+	Variable i,j,count,endPt,startPt,numWaveSets,waveSetSize,totalSize = DimSize(ds,0)
+	String wsDims = "",waveEntry = ""
+	
+	//Get data set name
+	String dataSetName = StringFromList(1,NameOfWave(ds),"_")
+	
+	value = "," + value//put in starting comma for matching purposes
+	
+	//dimensions of current organization
+	wsDims = getWaveSetDims(dataSetName)
+	numWaveSets = ItemsInList(wsDims,";")
+	
+	If(numWaveSets == 1)
+		Variable offset = 0
+	Else
+		offset = 1
+	EndIf
+	
+	For(j=numWaveSets-1;j>-1;j-=1) //go backwards
+		waveSetSize = str2num(StringFromList(j,wsDims,";"))
+		
+		//start and end indices of each waveset, start is high, end is low.
+		endPt = totalSize - (numWaveSets - j)*waveSetSize -  (numWaveSets - (j + 1)) * offset //offset is only used when there is more than 1 waveset
+		
+		If(!StringMatch(value,"*," + num2str(j) + ",*"))
+			DeletePoints endPt-1,waveSetSize+1,ds
+		EndIf
+	EndFor
+	
 End
 
 //updates the wave list box to show the contents of the selected data set

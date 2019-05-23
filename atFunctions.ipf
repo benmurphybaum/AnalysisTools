@@ -167,6 +167,12 @@ Function flipLists(whichList)
 			Button dispROI win=analysis_tools#scanListPanel,disable = 0
 			Button atBrowseButton win=analysis_tools#scanListPanel,title="Browse"
 			
+			//in case of different sizes for list wave and selection wave
+			//this can happen from the time series, line scan, and z stack labels within the list
+			If(DimSize(selWave,0) != DimSize(scanListWave,0))
+				Redimension/N=(DimSize(selWave,0)) scanListWave
+			EndIf
+			
 			//Change some control assignments
 			ListBox/Z WaveListBox win=analysis_tools#scanListPanel,selWave=selWave,listWave=scanListWave,proc=atListBoxProc,disable=0
 
