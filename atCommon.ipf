@@ -3892,7 +3892,13 @@ Function/S resolveCmdLine(cmdLineStr,wsn,wsi)
 			EndIf
 			
 			dsName = cmdLineStr[pos1+1,pos2-1]
-			Wave/T/Z ds = GetDataSetWave(dsName=dsName)
+			
+			//Check if dataset name is referencing the wave set index
+		//	If(!cmpstr(dsName,"wsi"))
+				
+		//	Else
+				Wave/T/Z ds = GetDataSetWave(dsName=dsName)
+		//	EndIf
 				
 			If(pos3 != -1 && pos2 != -1)
 				//set pos2 to after the waveset specifier for proper string trimming

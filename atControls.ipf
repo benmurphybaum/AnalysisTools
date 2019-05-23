@@ -54,6 +54,10 @@ Function atButtonProc(ba) : ButtonControl
 								pos2 = strsearch(S_Value,">",pos1)
 								If(pos1 != -1 && pos2 != -1)
 									dsName = S_Value[pos1+1,pos2-1]
+									If(!cmpstr(dsName,"wsi"))
+										S_Value = S_Value[pos2+1,strlen(S_Value)-1]
+										continue
+									EndIf
 									dsRefList += dsName + ";"
 									S_Value = S_Value[pos2+1,strlen(S_Value)-1]
 								Else
@@ -92,6 +96,38 @@ Function atButtonProc(ba) : ButtonControl
 								
 								For(j=0;j<numWaves;j+=1)
 									runCmdStr = resolveCmdLine(cmdLineStr,i,j)
+									
+									//check if there is an output wave assignment, if so does it exist?
+									String left,outWaveName,folder,firstWave
+									Variable pos
+								   left = StringFromList(0,cmdLineStr,"=")
+									If(strlen(left))
+										pos = strsearch(left,"[",0)
+										If(pos != -1)
+											outWaveName = left[0,pos-1]
+										Else
+											outWaveName = left
+										EndIf	
+										
+										//if its a full path, don't add a path to the name
+										If(!stringmatch(outWaveName,"root:*"))
+											firstWave = StringFromList(0,theWaveSet,";")
+											folder = GetWavesDataFolder($firstWave,1)
+										
+											//full path to output wave
+											outWaveName = folder + outWaveName
+										EndIf
+										
+										//append full path to cmd string
+										runCmdStr[0,pos-1] = ""
+										runCmdStr = outWaveName + runCmdStr
+										
+										If(strlen(outWaveName) && !WaveExists($outWaveName))
+											Make/O/N=(numWaves) $outWaveName
+										EndIf 
+
+									EndIf
+									
 									RunCmd(runCmdStr)
 									print runCmdStr
 								EndFor
