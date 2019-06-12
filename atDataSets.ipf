@@ -1001,6 +1001,7 @@ Function setWaveGrouping(original,ds)
 				//stride flag, this separates all waves within a waveset by every /S=x wave.
 				//So for /S=8, every 8th wave will be in a waveset starting with the first wave, then every 8th starting with the second, etc.
 				filterByStride(original,ds,value)
+				break
 			default:
 				sortByWaveGroup(original,ds,itemStr)
 				break
