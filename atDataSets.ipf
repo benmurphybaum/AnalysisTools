@@ -992,142 +992,23 @@ Function setWaveGrouping(original,ds)
 			case "WSN":
 				filterByWaveSetNumber(ds,value)
 				break
+			case "B":
+				//block flag, this separates everything into specific size blocks of waves
+				//must be placed first in the order for it to work
+				filterByBlockSize(original,ds,value)
+				break
+			case "S":
+				//stride flag, this separates all waves within a waveset by every /S=x wave.
+				//So for /S=8, every 8th wave will be in a waveset starting with the first wave, then every 8th starting with the second, etc.
+				filterByStride(original,ds,value)
 			default:
 				sortByWaveGroup(original,ds,itemStr)
 				break
 		endswitch
 	EndFor
-	
-	
-	return 0
-	
-	String wsi_str = StringByKey("WSI",grouping,"=","/")
-	If(strlen(wsi_str))
-		grouping = ReplaceString("/WSI=" + wsi_str,grouping,"")
-	EndIf
-	
-	String wsn_str = StringByKey("WSN",grouping,"=","/")
-	If(strlen(wsn_str))
-		grouping = ReplaceString("/WSN=" + wsn_str,grouping,"")
-	EndIf
-	
-	String wg_str = StringByKey("WG",grouping,"=","/")
-	If(strlen(wg_str))
-		grouping = wg_str
-	EndIf
-	
-	numGroupings = ItemsInList(grouping,",")
-	numWaves = DimSize(ds,0)
-	
-	//make working waves
-	Make/T/FREE/N=(numWaves) tempDS
-	Make/FREE/N=(numWaves) matched
-	
-	matched = -1
-	//wsn = 0
-	
-	For(i=0;i<numGroupings;i+=1)
-		wsn = 0
-		item = str2num(StringFromList(i,grouping,","))
-		switch(item)
-			case -2:
-				//group all together
-				Redimension/N=(DimSize(original,0)) ds
-				ds = original
-				break
-			default:
-				//group by the index
-
-				//If the data set is already grouped, must do next grouping within that structure
-				Variable m,numWaveSets = GetNumWaveSets(dataSetName)
-				String wsDims = GetWaveSetDims(dataSetName)
-				numWaves = DimSize(ds,0)
-				
-				//make fresh working waves
-				Make/T/FREE/N=(numWaves) tempDS
-				Make/FREE/N=(numWaves) matched
-				Make/T/FREE/N=(DimSize(ds,0)) original2
-				original2 = ds
-				
-				matched = -1	
-				count = 0
-				
-				For(m=0;m<numWaveSets;m+=1)
-					//uses block of waves from each subsequent waveset
-					numWaves = str2num(StringFromList(m,wsDims,";"))
-					String theWaves = getWaveSet(dataSetName,wsn=m)
-					
-					For(j=0;j<numWaves;j+=1)
-						
-						If(matched[j + count] != -1)
-							continue
-						EndIf
-						
-						//name = ParseFilePath(0,ds[j],":",1,0)
-						name = ParseFilePath(0,StringFromList(j,theWaves,";"),":",1,0)
-						term = StringFromList(item,name,"_")
-						
-						For(k=0;k<numWaves;k+=1)
-							If(matched[k + count] != -1)
-								continue
-							EndIf
-							//matchName = ParseFilePath(0,ds[k],":",1,0)
-							matchName = ParseFilePath(0,StringFromList(k,theWaves,";"),":",1,0)
-							matchTerm = StringFromList(item,matchName,"_")
-						
-							If(!cmpstr(term,matchTerm))
-								matched[k + count] = wsn
-							EndIf	
-							
-						EndFor
-						wsn += 1
-					EndFor
-					count += numWaves
-				EndFor
-				
-				//Label first wave set, if there are more than 1
-				count = 0
-
-				//make copy of it without the wave set labels
-				Variable size = DimSize(original2,0)
-				For(j=0;j<size;j+=1)
-					If(stringmatch(original2[j],"*WSN*"))
-						DeletePoints j,1,original2
-						j -= 1
-						size -= 1
-					EndIf
-				EndFor
-				
-				If(wsn > 0)
-					InsertPoints 0,1,tempDS
-					tempDS[count] = "----WSN 0----"
-					count += 1
-				EndIf
-				
-				//sort data set
-				numWaves = DimSize(original,0)
-								
-				For(j=0;j<wsn;j+=1)
-					For(k=0;k<numWaves;k+=1)
-						If(matched[k] == j)
-							tempDS[count] = original2[k]
-							count +=1
-						EndIf	
-					EndFor
-					
-					If(j<wsn-1)
-						InsertPoints count,1,tempDS
-						tempDS[count] = "----WSN " + num2str(j+1) + "----"
-					EndIf
-					count+=1
-				EndFor
-				
-				Redimension/N=(DimSize(tempDS,0)) ds
-				ds = tempDS
-		endswitch
-	EndFor
 End
 
+//orgnizes a dataset by the indicated underscore position
 Function sortByWaveGroup(original,ds,value)
 	Wave/T original
 	Wave/T ds
@@ -1256,7 +1137,7 @@ Function sortByWaveGroup(original,ds,value)
 	EndFor
 End
 
-
+//orgnizes a dataset by the wave set index
 Function filterByWaveSetIndex(ds,value)
 	Wave/T ds
 	String value
@@ -1295,10 +1176,10 @@ Function filterByWaveSetIndex(ds,value)
 			count -= 1
 		EndFor
 	EndFor
-	
 
 End
 
+//orgnizes a dataset by the wave set number
 Function filterByWaveSetNumber(ds,value)
 	Wave/T ds
 	String value
@@ -1330,6 +1211,114 @@ Function filterByWaveSetNumber(ds,value)
 			DeletePoints endPt-1,waveSetSize+1,ds
 		EndIf
 	EndFor
+	
+End
+
+Function filterByBlockSize(original,ds,value)
+	Wave/T original,ds
+	String value
+	
+	//Get data set name
+	String dataSetName = StringFromList(1,NameOfWave(ds),"_")
+	
+	Variable waveSetSize,numWaveSets,blockSize,nextBlock,count,i,j,numWaves,index
+	
+	numWaves = DimSize(original,0)
+	//reset the wave groupings to the original ungrouped state
+	//Redimension/N=(numWaves) ds
+	//ds = original
+	
+	Make/T/N=(numWaves)/FREE tempDS
+	
+	//dimensions of current organization
+	String wsDims = getWaveSetDims(dataSetName)
+	numWaveSets = ItemsInList(wsDims,";")
+	
+	blockSize = str2num(value)
+	index = 0
+	
+	For(j=0;j<numWaveSets;j+=1)
+		waveSetSize = str2num(StringFromList(j,wsDims,";"))
+		String theWaves = getWaveSet(dataSetName,wsn=j)
+		
+		count = 0
+		nextBlock = 0
+	
+		For(i=0;i<waveSetSize;i+=1)
+			If(i == nextBlock)
+				InsertPoints index + count,1,tempDS
+				tempDS[index] = "----WSN " + num2str(count) + "----"
+				index += 1
+				tempDS[index] = StringFromList(i,theWaves,";")
+				index += 1
+				count += 1
+				nextBlock = blockSize * count
+			Else
+				tempDS[index] = StringFromList(i,theWaves,";")//ds[i-count]
+				index += 1 
+			EndIf
+		EndFor
+	EndFor
+	
+	//if last waveset is emtpy, delete it
+	If(stringmatch(tempDS[DimSize(tempDS,0)-1],"*WSN*"))
+		DeletePoints DimSize(tempDS,0)-1,1,tempDS
+	EndIf
+	
+	Redimension/N=(DimSize(tempDS,0)) ds
+	ds = tempDS
+	
+End
+
+Function filterByStride(original,ds,value)
+	Wave/T original,ds
+	String value
+	
+	Variable numWaves,stride = str2num(value)
+	Variable nextStride,numStrides,j,k,i,count,waveSetSize,numWaveSets,index
+	
+	//Get data set name
+	String dataSetName = StringFromList(1,NameOfWave(ds),"_")
+	
+	numWaves = DimSize(original,0)
+	
+	Make/T/N=(numWaves)/FREE tempDS
+	
+	//dimensions of current organization
+	String wsDims = getWaveSetDims(dataSetName)
+	numWaveSets = ItemsInList(wsDims,";")
+	
+	For(j=0;j<numWaveSets;j+=1)
+		//Get the waves in the waveset
+		waveSetSize = str2num(StringFromList(j,wsDims,";"))
+		String theWaves = getWaveSet(dataSetName,wsn=j)
+		
+		numStrides = floor(waveSetSize / stride)
+		count = 0
+		//cycle through each set of strides through the wave set
+		For(k=0;k<stride;k+=1)
+			//insert another WSN reference in the data set
+			InsertPoints index + k,1,tempDS
+			tempDS[index] = "----WSN " + num2str(count) + "----"
+			index += 1
+			
+			//cycle through each wave in the waveset, by the stride length
+			For(i=count;i<waveSetSize;i+=stride)
+				tempDS[index] = StringFromList(i,theWaves,";")
+				index += 1 
+			EndFor
+			
+			count += 1
+		EndFor
+	EndFor
+	
+	//if last waveset is emtpy, delete it
+	If(stringmatch(tempDS[DimSize(tempDS,0)-1],"*WSN*"))
+		DeletePoints DimSize(tempDS,0)-1,1,tempDS
+	EndIf
+	
+	Redimension/N=(DimSize(tempDS,0)) ds
+	ds = tempDS
 	
 End
 

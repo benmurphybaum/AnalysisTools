@@ -100,8 +100,13 @@ Function atButtonProc(ba) : ButtonControl
 									//check if there is an output wave assignment, if so does it exist?
 									String left,outWaveName,folder,firstWave
 									Variable pos
-								   left = StringFromList(0,cmdLineStr,"=")
-									If(strlen(left))
+									
+									left = ""
+									If(stringmatch(cmdLineStr,"*=*"))
+									   left = StringFromList(0,cmdLineStr,"=")
+									EndIf
+									
+									If(strlen(left) && !stringmatch(left,"*/*")) //makes sure that the equals sign is truly for a wave assignment, as opposed to a flag assignment
 										pos = strsearch(left,"[",0)
 										If(pos != -1)
 											outWaveName = left[0,pos-1]
@@ -144,6 +149,7 @@ Function atButtonProc(ba) : ButtonControl
 						case "Mask Image":
 						case "Max Project":
 						case "Apply Map Threshold":
+						case "Duplicate/Rename":
 						case "Kill Waves":
 							SVAR wsDims = root:Packages:analysisTools:DataSets:wsDims
 							NVAR numWaveSets = root:Packages:analysisTools:DataSets:numWaveSets

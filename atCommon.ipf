@@ -1383,12 +1383,25 @@ Function/S getSelectedItems()
 End
 
 //Routes to using scan list or item list or data sets for wave selection.
-Function/S getWaveNames([ignoreWaveGrouping])
+Function/S getWaveNames([ignoreWaveGrouping,dataset,waveset])
 	Variable ignoreWaveGrouping
+	String dataset
+	Variable waveset
 	
 	//To override wave grouping for some specific functions that can't use them
 	If(ParamIsDefault(ignoreWaveGrouping))
 		ignoreWaveGrouping = 0
+	EndIf
+	
+	//To specify which data set to pull from as opposed to using the drop down menu to figure it out
+	//This is used in cases where multiple data sets are inputs to the function
+	If(ParamIsDefault(dataset))
+		dataset = ""
+	EndIf	
+	
+	//If a specific waveset needs to be extracted
+	If(ParamIsDefault(waveset))
+		waveset = -1
 	EndIf
 	
 	SVAR wsDims = root:Packages:analysisTools:DataSets:wsDims
@@ -1399,6 +1412,41 @@ Function/S getWaveNames([ignoreWaveGrouping])
 	ControlInfo/W=analysis_tools extFuncDS
 	String theWaveList = ""
 	
+	//If data set is specified already
+	If(strlen(dataset))
+		If(ignoreWaveGrouping)
+				Wave/T ds = GetDataSetWave(dsName=dataset)
+				theWaveList = tableToList(ds,";")
+				//Remove the wave set divisions
+				String matches = ListMatch(theWaveList,"*WSN*",";")
+				theWaveList = RemoveFromList(matches,theWaveList)
+		
+			Else
+				Wave/T ds = GetDataSetWave(dsName=dataset)
+				If(waveset != -1)
+					wsn = waveset
+				EndIf
+				
+				Variable pos = tableMatch("*WSN " + num2str(wsn) + "*",ds) + 1//first wave of the waveset
+				If(pos == 0) //no wavesets defined, take all the waves at once
+					Variable endpos = DimSize(ds,0)
+				Else
+					endpos = pos + str2num(StringFromList(wsn,wsDims,";")) //Last wave of the waveset
+				EndIf
+				
+				If(numtype(endpos) == 2) //only wave of the waveset
+					endpos = pos + 1
+				EndIf
+				
+				For(i=pos;i<endpos;i+=1)
+					theWaveList += ds[i] + ";"
+				EndFor
+			EndIf
+		return theWaveList
+	EndIf
+	
+	
+	//if data set is not specified, find the waves from the drop down menu
 	strswitch(S_Value)
 		case "--None--":
 			break
@@ -1414,14 +1462,14 @@ Function/S getWaveNames([ignoreWaveGrouping])
 				Wave/T ds = GetDataSetWave(dsName=S_Value)
 				theWaveList = tableToList(ds,";")
 				//Remove the wave set divisions
-				String matches = ListMatch(theWaveList,"*WSN*",";")
+				matches = ListMatch(theWaveList,"*WSN*",";")
 				theWaveList = RemoveFromList(matches,theWaveList)
 		
 			Else
 				Wave/T ds = GetDataSetWave(dsName=S_Value)
-				Variable pos = tableMatch("*WSN " + num2str(wsn) + "*",ds) + 1//first wave of the waveset
+				pos = tableMatch("*WSN " + num2str(wsn) + "*",ds) + 1//first wave of the waveset
 				If(pos == 0) //no wavesets defined, take all the waves at once
-					Variable endpos = DimSize(ds,0)
+					endpos = DimSize(ds,0)
 				Else
 					endpos = pos + str2num(StringFromList(wsn,wsDims,";")) //Last wave of the waveset
 				EndIf
@@ -2065,12 +2113,12 @@ Function/WAVE getWaveMatchList()
 	//Relative folder path that will be added on to the current data folder
 	ControlInfo/W=analysis_tools relativeFolderMatch
 	String relFolder = S_Value
-	If(strlen(relFolder) > 0)
-		relFolder = ":" + relFolder
-	EndIf
+//	If(strlen(relFolder) > 0)
+//		relFolder = ":" + relFolder
+//	EndIf
 	
 	Variable items = ItemsInList(scanListStr,";")
-	Variable i
+	Variable i,j
 	SVAR waveMatchStr = root:Packages:analysisTools:waveMatchStr
 	SVAR notMatchStr = root:Packages:analysisTools:waveNotMatchStr
 	String itemList = ""
@@ -2093,13 +2141,36 @@ Function/WAVE getWaveMatchList()
 	Wave/T folderTable = root:Packages:analysisTools:folderTable
 	Wave selFolderWave = root:Packages:analysisTools:selFolderWave
 	
+	
 	//Find out the selected folders if we're in Browser mode
 	If(cmpstr(whichList,"Browser") == 0)
 		Variable browsing = 1
 		String folderList = ""
 		For(i=0;i<DimSize(folderTable,0);i+=1)
+		
+			//reset the subfolder and matched folder lists for each parent folder
+			String subFolderList = ""	//all subfolders
+			String relFolderList = "" //matched subfolders
+			
 			If(selFolderWave[i] == 1)
-				folderList +=  cdf + folderTable[i] + relFolder + ";"
+				//get list of all subfolders within the parent folder
+				Variable numSubFolders = CountObjects(cdf + folderTable[i],4)
+				For(j=0;j<numSubFolders;j+=1)
+					subFolderList += GetIndexedObjName(cdf + folderTable[i],4,j) + ";"
+				EndFor
+				
+				//match all subfolders
+				relFolderList = ListMatch(subFolderList,relFolder,";")
+				
+				//append each subfolder that has matched to the folderList
+				If(ItemsInList(relFolderList,";") > 0)
+					For(j=0;j<ItemsInList(relFolderList,";");j+=1)
+						String matchedSubFolder = ":" + StringFromList(j,relFolderList,";")
+						folderList +=  cdf + folderTable[i] + matchedSubFolder + ";"
+					EndFor
+				Else
+					folderList +=  cdf + folderTable[i] + ";"
+				EndIf
 			EndIf
 		EndFor
 		items = ItemsInList(folderList,";")
@@ -2132,7 +2203,7 @@ Function/WAVE getWaveMatchList()
 		EndIf
 		
 		//Are there any OR statements in the match string?
-		Variable j,numORs
+		Variable numORs
 		numORs = ItemsInList(waveMatchStr,"||")
 		
 		//Match list

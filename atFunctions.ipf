@@ -5567,7 +5567,7 @@ Function duplicateRename()
 	Variable killOriginals = V_Value
 	
 	//Finds the wave paths for analysis
-	theWaveList = getWaveNames(ignoreWaveGrouping=1)
+	theWaveList = getWaveNames()
 	numWaves = ItemsInList(theWaveList,";")
 	
 	For(i=0;i<numWaves;i+=1) //for # waves in the waveset
@@ -5583,6 +5583,7 @@ Function duplicateRename()
 		For(j=4;j>-1;j-=1)	//step backwards
 			//new name and the position
 			ControlInfo/W=analysis_tools $StringFromList(j,ctrlList,";")
+			S_Value = resolveListItems(S_value,",")
 			numAddItems = ItemsInList(S_Value,",")
 			pos = str2num(StringFromList(j,posList,";"))
 			
