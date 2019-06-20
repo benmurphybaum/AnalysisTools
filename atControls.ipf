@@ -68,6 +68,7 @@ Function atButtonProc(ba) : ButtonControl
 							//Test whether they have the same number of waveset dimensions
 							String dims = GetWaveSetDims(StringFromList(0,dsRefList,";"))
 							Make/FREE/N=(ItemsInList(dsRefList,";")) wsDimSize //holds number of waves in each waveset
+							wsDimSize[0] = str2num(dims)
 							
 							If(ItemsInList(dsRefList,";") > 0)	//if there are data set references, otherwise continue
 								For(i=1;i<ItemsInList(dsRefList,";");i+=1)
@@ -87,8 +88,8 @@ Function atButtonProc(ba) : ButtonControl
 							For(i=0;i<numWaveSets;i+=1)
 								If(strlen(dsName))
 									String theWaveSet = GetWaveSet(dsName,wsn=i)
-									numWaves = ItemsInList(theWaveSet,";")
-									//numWaves = WaveMax(wsDimSize)
+									//numWaves = ItemsInList(theWaveSet,";")
+									numWaves = WaveMax(wsDimSize)
 
 								Else
 									numWaves = 1
@@ -102,8 +103,8 @@ Function atButtonProc(ba) : ButtonControl
 									Variable pos
 									
 									left = ""
-									If(stringmatch(cmdLineStr,"*=*"))
-									   left = StringFromList(0,cmdLineStr,"=")
+									If(stringmatch(runCmdStr,"*=*"))
+									   left = StringFromList(0,runCmdStr,"=")
 									EndIf
 									
 									If(strlen(left) && !stringmatch(left,"*/*")) //makes sure that the equals sign is truly for a wave assignment, as opposed to a flag assignment
@@ -121,11 +122,11 @@ Function atButtonProc(ba) : ButtonControl
 										
 											//full path to output wave
 											outWaveName = folder + outWaveName
+											
+											//append full path to cmd string
+											runCmdStr[0,pos-1] = ""
+											runCmdStr = outWaveName + runCmdStr
 										EndIf
-										
-										//append full path to cmd string
-										runCmdStr[0,pos-1] = ""
-										runCmdStr = outWaveName + runCmdStr
 										
 										If(strlen(outWaveName) && !WaveExists($outWaveName))
 											Make/O/N=(numWaves) $outWaveName

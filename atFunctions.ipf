@@ -5584,6 +5584,8 @@ Function duplicateRename()
 			//new name and the position
 			ControlInfo/W=analysis_tools $StringFromList(j,ctrlList,";")
 			S_Value = resolveListItems(S_value,",")
+			S_Value = RemoveEnding(S_Value,",")
+			
 			numAddItems = ItemsInList(S_Value,",")
 			pos = str2num(StringFromList(j,posList,";"))
 			
