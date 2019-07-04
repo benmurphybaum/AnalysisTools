@@ -297,6 +297,11 @@ Function LoadAnalysisSuite([left,top])
 		Make/O/T/N=(DimSize(dataSetNames,0),2) root:Packages:analysisTools:DataSets:dsFilters
 	EndIf
 	
+	//Data set selections, only overwrite if it doesn't exist yet.
+	If(!WaveExists(root:Packages:analysisTools:DataSets:dsSelection))
+		Make/O/T/N=(DimSize(dataSetNames,0),3) root:Packages:analysisTools:DataSets:dsSelection
+	EndIf
+	
 	
 		
 	//Create Variables////////////////////

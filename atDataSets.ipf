@@ -810,6 +810,79 @@ Function fillFilterTable()
 
 End
 
+//saves the listbox selection that was used for matching the waves to make the dataset
+Function saveSelection(dsName)
+	String dsName
+	SVAR cdf = root:Packages:analysisTools:currentDataFolder
+	
+	Wave/T folderTable = root:Packages:analysisTools:folderTable
+	Wave folderList = root:Packages:analysisTools:selFolderWave
+	
+	Wave/T dsSelection = root:Packages:analysisTools:DataSets:dsSelection
+	Wave/T dataSetNames = root:Packages:analysisTools:DataSets:dataSetNames
+	Variable i,currentNumSets = DimSize(dataSetNames,0)
+	
+	//Ensure correct wave dimensions
+	If(currentNumSets == 0)
+		return -1
+	EndIf
+	
+	Redimension/N=(currentNumSets,3) dsSelection
+	ControlInfo/W=analysis_tools dataSetListBox
+	
+	If(V_Value == -1 || V_Value > currentNumSets)
+		//no data set selected or invalid data set
+		return -1
+	EndIf
+	
+	dsSelection[V_Value][0] = dataSetNames[V_Value]
+	dsSelection[V_Value][1] = cdf //current data folder that selection is made in
+	
+	//all the selected folders within the current data folder
+	dsSelection[V_Value][2] = ""
+	For(i=0;i<DimSize(folderList,0);i+=1)
+		If(folderList[i] ==1)
+			dsSelection[V_Value][2] += folderTable[i] + ";"
+		EndIf
+	EndFor	
+End
+
+//navigates to and reselects the folders that were used to create the data set originally
+Function recallSelection(dsName)
+	String dsName
+	
+	If(!strlen(dsName))
+		return -1
+	EndIf
+	
+	Wave/T dsSelection = root:Packages:analysisTools:DataSets:dsSelection //folder selection data	
+	Wave/T folderTable = root:Packages:analysisTools:folderTable //list of the subfolder names in cdf
+	Wave folderList = root:Packages:analysisTools:selFolderWave //selection wave for subfolders
+	
+	Variable i,j,dsIndex = tableMatch(dsName,dsSelection)
+	
+	//navigate to the correct data folder
+	If(dsIndex == -1)
+		return -1
+	EndIf
+	SetDataFolder $dsSelection[dsIndex][1]
+	GetFolderListItems()
+	GetFolderItems()
+	
+	//make selections according to the DS selection wave
+	String folderSelections = dsSelection[dsIndex][2]
+	folderList = 0
+	For(i=0;i<ItemsInList(folderSelections,";");i+=1)
+		String selection = StringFromList(i,folderSelections,";")
+		
+		For(j=0;j<DimSize(folderTable,0);j+=1)
+			If(!cmpstr(selection,folderTable[j]))
+				folderList[j] = 1
+			EndIf
+		EndFor
+	EndFor	
+End
+
 Function clearFilterSet()
 	SetVariable prefixGroup win=analysis_tools,value=_STR:""
 	SetVariable groupGroup win=analysis_tools,value=_STR:""

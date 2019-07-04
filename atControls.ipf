@@ -341,6 +341,7 @@ Function atButtonProc(ba) : ButtonControl
 					ControlInfo/W=analysis_tools dataSetName
 					addDataSet(S_Value)
 					fillFilterTable()
+					saveSelection(S_Value) //saves the listbox selection that was used for matching the waves to make the dataset
 					
 					Wave/T dsFilters = root:Packages:analysisTools:DataSets:dsFilters
 					index = tableMatch(S_Value,dsFilters)
@@ -499,7 +500,17 @@ Function atListBoxProc(lba) : ListBoxControl
 							
 						EndIf
 					EndIf
-				break
+					break
+				case "dataSetListBox":
+					If(lba.eventMod == 17)
+					//recalls the selection used to make the data set originally
+						PopupContextualMenu/C=(lba.MouseLoc.h, lba.MouseLoc.v) "Retrieve Selection"
+						If(V_flag)
+							dsName = whichDataSet()
+							recallSelection(dsName)
+						EndIf
+					EndIf
+					break
 			endswitch
 		case 2: // mouse up
 			strswitch(lba.ctrlName)
