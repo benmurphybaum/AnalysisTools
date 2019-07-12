@@ -2739,7 +2739,7 @@ Function dfMapMultiThread()
 					For(k=0;k<frames;k+=1)
 						MatrixOP/O/FREE theLayer = layer(temp,k)
 						MatrixFilter/N=(spatialFilter) median theLayer
-						MultiThread temp[][][k] = theLayer[p][q][0]
+						Multithread temp[][][k] = theLayer[p][q][0]
 					EndFor
 				EndIf
 					
@@ -2761,7 +2761,7 @@ Function dfMapMultiThread()
 							FlattenLaserResponse(theBeam,0,bslnEndTm,1,estimatePeakTm)
 						EndIf
 						
-						MultiThread temp[i][j][] = theBeam[r]
+						Multithread temp[i][j][] = theBeam[r]
 					EndFor	
 				EndFor	
 				
@@ -2774,20 +2774,20 @@ Function dfMapMultiThread()
 				
 				For(i=startLayer;i<endLayer;i+=1)
 					MatrixOP/FREE/O theLayer = layer(temp,i)
-					MultiThread greenBaseline += theLayer
+					FastOP greenBaseline = greenBaseline + theLayer
 				EndFor
-				MultiThread greenBaseline /= (endLayer - startLayer)
+				Multithread greenBaseline /= (endLayer - startLayer)
 				
 	
 				//Eliminates the possibility of zero values in the dataset for dendrites in the mask, which all get converted to NaN at the end.
-				MultiThread temp = (temp[p][q][r] == greenBaseline[p][q][0]) ? temp[p][q][r] + 1 : temp[p][q][r]
+				Multithread temp = (temp[p][q][r] == greenBaseline[p][q][0]) ? temp[p][q][r] + 1 : temp[p][q][r]
 				
 				//Calculate ∆G/R time-varying map
 				ControlInfo/W=analysis_tools doDarkSubtract
 				If(V_Value)
-					MultiThread dFWave = (temp[p][q][r] - greenBaseline[p][q][0]) / (redBaseline[p][q][0] - darkValue)
+					Multithread dFWave = (temp[p][q][r] - greenBaseline[p][q][0]) / (redBaseline[p][q][0] - darkValue)
 				Else
-					MultiThread dFWave = (temp[p][q][r] - greenBaseline[p][q][0]) / redBaseline[p][q][0]
+					Multithread dFWave = (temp[p][q][r] - greenBaseline[p][q][0]) / redBaseline[p][q][0]
 				EndIf
 						
 				//Make peak ∆G/R and peak-time map waves
@@ -2805,7 +2805,7 @@ Function dfMapMultiThread()
 				EndIf
 				
 				MultiThread dFPeakWave = gnoise(0.001)	
-				MultiThread dFPeakLoc = 0
+				FastOP dFPeakLoc = 0
 				
 				//Temporal smoothing of the dF map prior to finding the peaks.
 				ControlInfo/W=analysis_tools SmoothBox
@@ -2829,7 +2829,7 @@ Function dfMapMultiThread()
 						SetScale/P x,DimOffset(ch1Wave,2),DimDelta(ch1Wave,2),theBeam
 						WaveStats/Q/R=(startTm,endTm) theBeam
 						
-						MultiThread dFPeakLoc[i][j] = V_MaxRowLoc
+						dFPeakLoc[i][j] = V_MaxRowLoc
 						//averages 50 ms before and after the peak to get the final ∆G/R peak value
 						
 						ControlInfo/W=analysis_tools peakOrAreaMenu
@@ -2839,7 +2839,7 @@ Function dfMapMultiThread()
 							MultiThread dFPeakWave[i][j] = mean(theBeam,startTm,endTm)
 						ElseIf(!cmpstr(S_Value,"Area/Peak")) //for ZT
 							MultiThread dFIntWave[i][j] = area(theBeam,V_maxLoc - 0.05,V_maxLoc + 2.05) //2.1 s window for taking the area of the Ca response
-							MultiThread dFIndexWave[i][j] = (dFIntWave[i][j] / dFPeakWave[i][j])	//Sustained/transient index (area divided by the peak)
+							Multithread dFIndexWave[i][j] = dFIntWave[i][j] / dFPeakWave[i][j]	//Sustained/transient index (area divided by the peak)
 						EndIf
 					EndFor
 				EndFor
@@ -2924,7 +2924,7 @@ Function dfMapMultiThread()
 				
 				If(checkAllFolders)
 					//folderPath = "root:twoP_Scans:" + theScanStr + ":"
-					Wave theMask = $maskTable[V_Value-1]
+					Wave theMask = $maskTable[V_Value-2]
 				Else
 					Wave theMask = $S_Value
 				EndIf
@@ -2993,11 +2993,11 @@ Function dfMapMultiThread()
 				startLayer = ScaleToIndex(theWave,bslnStartTm,2)
 				endLayer = ScaleToIndex(theWave,bslnEndTm,2)
 				
-				MultiThread greenBaseline = 0
+				greenBaseline = 0
 				
 				For(i=startLayer;i<endLayer;i+=1)
 					MatrixOP/FREE/O theLayer = layer(temp,i)
-					MultiThread greenBaseline += theLayer
+					FastOP greenBaseline = greenBaseline +theLayer
 				EndFor
 				MultiThread greenBaseline /= (endLayer - startLayer)
 				
@@ -3056,17 +3056,17 @@ Function dfMapMultiThread()
 						SetScale/P x,DimOffset(theWave,2),DimDelta(theWave,2),theBeam
 						WaveStats/Q/R=(startTm,endTm) theBeam
 						
-						MultiThread dFPeakLoc[i][j] = V_MaxRowLoc
+						dFPeakLoc[i][j] = V_MaxRowLoc
 						
 						//averages 50ms before and after the peak to get the final ∆F/F peak value
 						ControlInfo/W=analysis_tools peakOrAreaMenu
 						If(!cmpstr(S_Value,"Peak"))
-							MultiThread dFPeakWave[i][j] = mean(theBeam,V_maxloc - 0.05,V_maxloc + 0.05)
+							dFPeakWave[i][j] = mean(theBeam,V_maxloc - 0.05,V_maxloc + 0.05)
 						ElseIf(!cmpstr(S_Value,"Area"))
-							MultiThread dFPeakWave[i][j] = mean(theBeam,startTm,endTm)
+							dFPeakWave[i][j] = mean(theBeam,startTm,endTm)
 						ElseIf(!cmpstr(S_Value,"Area/Peak")) //for ZT
-							MultiThread dFIntWave[i][j] = area(theBeam,V_maxLoc - 0.05,V_maxLoc + 2.05) //2.1 s window for taking the area of the Ca response
-							MultiThread dFIndexWave[i][j] = (dFIntWave[i][j] / dFPeakWave[i][j])	//Sustained/transient index (area divided by the peak)
+							dFIntWave[i][j] = area(theBeam,V_maxLoc - 0.05,V_maxLoc + 2.05) //2.1 s window for taking the area of the Ca response
+							dFIndexWave[i][j] = (dFIntWave[i][j] / dFPeakWave[i][j])	//Sustained/transient index (area divided by the peak)
 						EndIf
 					
 					EndFor

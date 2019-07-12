@@ -739,6 +739,7 @@ Function atListBoxProc(lba) : ListBoxControl
 					updateWSFilters()
 					
 					//Set full path text wave to match the wave name text wave
+					
 					Redimension/N=(DimSize(ogDataSetWave,0)) ogAT_WaveListTable_UnGroup
 					ogAT_WaveListTable_UnGroup = ogDataSetWave
 					Redimension/N=(DimSize(dataSetWave,0)) AT_waveListTable_FullPath
@@ -962,27 +963,27 @@ Function atPopProc(pa) : PopupMenuControl
 						If(cmpstr(S_Value,"--Scan List--") == 0)
 							//Scan list selection
 							If(cmpstr(currentCmd,"Get Peaks") == 0)
-								PopUpMenu extFuncChannelPop win=analysis_tools,pos={175,110},size={100,20},fsize=12,title="CH",value="1;2",disable=0
+								PopUpMenu extFuncChannelPop win=analysis_tools,fsize=12,title="CH",value="1;2",disable=0
 							Else
-								PopUpMenu extFuncChannelPop win=analysis_tools,pos={175,90},size={100,20},fsize=12,title="CH",value="1;2",disable=0
+								PopUpMenu extFuncChannelPop win=analysis_tools,fsize=12,title="CH",value="1;2",disable=0
 							EndIf
 							ListBox extFuncDSListBox win=analysis_tools,disable=1
 							DrawAction/W=analysis_tools delete
 						ElseIf(cmpstr(S_Value,"--None--") == 0 || cmpstr(S_Value,"--Item List--") == 0)
 							//Item List selection or no wave selection
 							If(cmpstr(currentCmd,"Get Peaks") == 0)
-								PopUpMenu extFuncChannelPop win=analysis_tools,pos={175,110},size={100,20},fsize=12,title="CH",value="1;2",disable=1
+								PopUpMenu extFuncChannelPop win=analysis_tools,fsize=12,title="CH",value="1;2",disable=1
 							Else
-								PopUpMenu extFuncChannelPop win=analysis_tools,pos={175,90},size={100,20},fsize=12,title="CH",value="1;2",disable=1
+								PopUpMenu extFuncChannelPop win=analysis_tools,fsize=12,title="CH",value="1;2",disable=1
 							EndIf
 							ListBox extFuncDSListBox win=analysis_tools,disable=1
 							DrawAction/W=analysis_tools delete
 						Else
 							//Data set selection
 							If(cmpstr(currentCmd,"Get Peaks") == 0)
-								PopUpMenu extFuncChannelPop win=analysis_tools,pos={175,110},size={100,20},fsize=12,title="CH",value="1;2",disable=1
+								PopUpMenu extFuncChannelPop win=analysis_tools,fsize=12,title="CH",value="1;2",disable=1
 							Else
-								PopUpMenu extFuncChannelPop win=analysis_tools,pos={175,90},size={100,20},fsize=12,title="CH",value="1;2",disable=1
+								PopUpMenu extFuncChannelPop win=analysis_tools,fsize=12,title="CH",value="1;2",disable=1
 							EndIf
 							
 							SetDrawEnv/W=analysis_tools fsize=12,xcoord=abs,ycoord=abs
@@ -991,6 +992,7 @@ Function atPopProc(pa) : PopupMenuControl
 						EndIf
 					Else
 						strswitch(pa.popStr)
+							case "Apply Map Threshold":
 							case "Denoise":
 							case "Average":
 							case "Mask Image":
@@ -1039,6 +1041,82 @@ Function atPopProc(pa) : PopupMenuControl
 	return 0
 End
 
+//Handles tab selections
+Function atTabProc(tba) : TabControl
+	STRUCT WMTabControlAction &tba
+	NVAR currentTab = root:Packages:analysisTools:currentTab
+	SVAR tabList = root:Packages:analysisTools:tabList
+	SVAR currentCmd = root:Packages:analysisTools:currentCmd
+	
+	switch( tba.eventCode )
+		case 2://mouse up
+			Variable newTab = tba.tab
+			If(newTab != currentTab) //don't match
+				switchTabs(newTab)
+				currentTab = newTab
+			EndIf
+	endswitch
+	return 0
+End
+
+//switches controls for one tab to the other
+Function switchTabs(newTab)
+	Variable newTab
+	Variable i
+	SVAR currentCmd = root:Packages:analysisTools:currentCmd
+	SVAR ctrlList_dataSets = root:Packages:analysisTools:ctrlList_dataSets
+	
+	//control list for selected command 
+	String ctrlList = getControlList(currentCmd)
+	
+	//control list for controls that are a part of every function
+	String functionCtrlList = "AT_CommandPop;AT_Help;AT_RunCmd"
+	
+	//control list for functions that need the data set and scan options.
+	String dsFunctions = "External Function;Mask Image;Denoise;Max Project;Dynamic ROI;Duplicate/Rename;Average;Error;Kill Waves;Run Cmd Line;"
+	
+	switch(newTab)
+		case 0://Data Sets
+			ModifyControlList/Z ctrlList win=analysis_tools,disable=1 //hide all controls
+			ModifyControlList/Z functionCtrlList win=analysis_tools,disable=1 //hide all controls
+			ModifyControlList/Z ctrlList_dataSets win=analysis_tools,disable=0 //show all controls
+			SetDrawLayer/K/W=analysis_tools UserBack
+			SetDrawLayer/W=analysis_tools UserBack
+			SetDrawEnv/W=analysis_tools fsize=12,xcoord=abs,ycoord=abs
+			DrawText/W=analysis_tools 95,117,"Waves:"
+			DrawText/W=analysis_tools 255,117,"Data Sets:"
+			DrawLine/W=analysis_tools 220,449,220,471
+			DrawLine/W=analysis_tools 220,449,230,449
+			
+			SetDrawEnv/W=analysis_tools arrow= 1,arrowlen= 5.00
+			DrawLine/W=analysis_tools 220,471,230,471
+			
+			SetDrawLayer/W=analysis_tools ProgBack
+			updateWSDimText()
+			break
+		case 1://Functions
+			DrawAction/W=analysis_tools delete
+			ModifyControlList/Z ctrlList win=analysis_tools,disable=0 //show all controls
+			ModifyControlList/Z functionCtrlList win=analysis_tools,disable=0 //show all controls
+			ModifyControlList/Z ctrlList_dataSets win=analysis_tools,disable=1 //hide all controls
+			SetDrawLayer/K/W=analysis_tools UserBack
+			If(stringmatch(dsFunctions,"*" + currentCmd + "*"))
+				
+				//refresh the values in the external parameter variables
+
+				ControlInfo/W=analysis_tools extFuncPopUp
+				ResolveFunctionParameters("AT_" + S_Value)
+				recallExtFuncValues(S_Value)
+				
+				ControlInfo/W=analysis_tools extFuncDS
+				SetExtFuncMenus(S_Value)
+			
+			EndIf
+			break
+	endswitch
+End
+
+//Handles all variable inputs
 Function atSetVarProc(sva) : SetVariableControl
 	STRUCT WMSetVariableAction &sva
 	

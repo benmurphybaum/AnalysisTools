@@ -118,25 +118,25 @@ Function SetExtFuncMenus(selection)
 	
 	If(cmpstr(selection,"--Scan List--") == 0)
 		If(cmpstr(currentCmd,"Get Peaks") == 0)
-			PopUpMenu extFuncChannelPop win=analysis_tools,pos={175,110},size={100,20},fsize=12,title="CH",value="1;2",disable=0
+			PopUpMenu extFuncChannelPop win=analysis_tools,fsize=12,title="CH",value="1;2",disable=0
 		Else
-			PopUpMenu extFuncChannelPop win=analysis_tools,pos={175,90},size={100,20},fsize=12,title="CH",value="1;2",disable=0
+			PopUpMenu extFuncChannelPop win=analysis_tools,fsize=12,title="CH",value="1;2",disable=0
 		EndIf
 		ListBox extFuncDSListBox win=analysis_tools,disable=1
 		DrawAction/W=analysis_tools delete
 	ElseIf(cmpstr(selection,"--None--") == 0 || cmpstr(selection,"--Item List--") == 0)
 		If(cmpstr(currentCmd,"Get Peaks") == 0)
-			PopUpMenu extFuncChannelPop win=analysis_tools,pos={175,110},size={100,20},fsize=12,title="CH",value="1;2",disable=1
+			PopUpMenu extFuncChannelPop win=analysis_tools,fsize=12,title="CH",value="1;2",disable=1
 		Else
-			PopUpMenu extFuncChannelPop win=analysis_tools,pos={175,90},size={100,20},fsize=12,title="CH",value="1;2",disable=1
+			PopUpMenu extFuncChannelPop win=analysis_tools,fsize=12,title="CH",value="1;2",disable=1
 		EndIf
 		ListBox extFuncDSListBox win=analysis_tools,disable=1
 		DrawAction/W=analysis_tools delete
 	Else
 		If(cmpstr(currentCmd,"Get Peaks") == 0)
-			PopUpMenu extFuncChannelPop win=analysis_tools,pos={175,110},size={100,20},fsize=12,title="CH",value="1;2",disable=1
+			PopUpMenu extFuncChannelPop win=analysis_tools,fsize=12,title="CH",value="1;2",disable=1
 		Else
-			PopUpMenu extFuncChannelPop win=analysis_tools,pos={175,90},size={100,20},fsize=12,title="CH",value="1;2",disable=1
+			PopUpMenu extFuncChannelPop win=analysis_tools,fsize=12,title="CH",value="1;2",disable=1
 			DrawAction/W=analysis_tools delete
 			SetDrawEnv/W=analysis_tools fsize=12,xcoord=abs,ycoord=abs,fstyle=2
 			DrawText/W=analysis_tools 230,117,"Waves:"
@@ -206,9 +206,17 @@ Function LoadPackage(thePackage)
 		String unload = ReplaceString("Unload ",thePackage,"")
 		cmdList = ReplaceString(thePackage,cmdList,unload)
 		cmdList = ReplaceString(packageTable[index][1],cmdList,"")
-		ChangeControls("Data Sets","")
-		PopUpMenu AT_CommandPop win=analysis_tools,mode=WhichListItem("Data Sets",cmdList)+1
-		saveCurrentCmd = "Data Sets"
+		ChangeControls("External Function","")
+		PopUpMenu AT_CommandPop win=analysis_tools,mode=WhichListItem("External Function",cmdList)+1
+		saveCurrentCmd = "External Function"
+		//refresh the values in the external parameter variables
+
+		ControlInfo/W=analysis_tools extFuncPopUp
+		ResolveFunctionParameters("AT_" + S_Value)
+		recallExtFuncValues(S_Value)
+		
+		ControlInfo/W=analysis_tools extFuncDS
+		SetExtFuncMenus(S_Value)
 	EndIf
 End
 
@@ -3485,7 +3493,7 @@ Function ResolveFunctionParameters(theFunction)
 	functionStr = RemoveEnding(StringFromList(1,functionStr,"("),")")
 	
 	extParamNames = functionStr
-	Variable type,left=10,top=125
+	Variable type,left=10,top=145
 	String name,paramName
 	
 	For(i=0;i<numParams;i+=1)

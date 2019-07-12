@@ -72,7 +72,7 @@ Function CreatePackages()
 	
 	//packageTable[1][0] = "Basic Functions"
 	//packageTable[1][1] = "-------------------;Average;Error"
-	cmdList = "Data Sets;External Function;---------------;Load PClamp;Browse PClamp;Load Stimulus Data;---------------;Run Cmd Line;Average;Error;Kill Waves;Duplicate/Rename;----Packages----;"
+	cmdList = "External Function;---------------;Load PClamp;Browse PClamp;Load Stimulus Data;---------------;Run Cmd Line;Average;Error;Kill Waves;Duplicate/Rename;----Packages----;"
 	
 	For(i=0;i<DimSize(packageTable,0);i+=1)
 		If(!strlen(packageTable[i][0]))
@@ -128,9 +128,9 @@ Function LoadAnalysisSuite([left,top])
 	EndIf
 	
 	//Housekeeping variables and strings
-	String/G root:Packages:analysisTools:tabList
-	String/G root:Packages:analysisTools:currentTab
-	String/G root:Packages:analysisTools:prevTab
+//	String/G root:Packages:analysisTools:tabList
+//	String/G root:Packages:analysisTools:currentTab
+//	String/G root:Packages:analysisTools:prevTab
 	
 	Variable/G root:Packages:analysisTools:viewerOpen
 	NVAR viewerOpen = root:Packages:analysisTools:viewerOpen
@@ -347,6 +347,19 @@ Function LoadAnalysisSuite([left,top])
 	Make/O/T/N=1 root:Packages:analysisTools:itemListTable
 	// ADD functions..
 	
+	//DataSet and Function tabs
+	Variable/G root:Packages:analysisTools:currentTab
+	NVAR currentTab = root:Packages:analysisTools:currentTab
+	currentTab = 0
+	String/G root:Packages:analysisTools:tabList = "Data Sets;Functions;"
+	SVAR tabList = root:Packages:analysisTools:tabList
+	TabControl tabMenu win=analysis_tools,pos={50,0},size={200,30},labelBack=0,disable=0,value=0,proc=atTabProc
+	
+	For(i=0;i<ItemsInList(tabList,";");i+=1)
+		TabControl tabMenu win=analysis_tools,tabLabel(i)=StringFromList(i,tabList,";")
+	EndFor
+	
+	
 	//Scan list panel
 	DefineGuide/W=analysis_tools listboxLeft={FR,-235},listboxBottom={FB,-10}
 	NewPanel/HOST=analysis_tools/FG=(listboxLeft,FT,FR,listboxBottom)/N=scanListPanel
@@ -382,14 +395,14 @@ Function LoadAnalysisSuite([left,top])
 	cdf = GetDataFolder(1)
 	SetVariable AT_cdf win=analysis_tools#scanListPanel,pos={100,8},size={200,20},fsize=10,value=cdf,title=" ",disable=1,frame=0
 	
-	PopUpMenu AT_CommandPop win=analysis_tools,pos={80,6},size={125,20},fsize=12, title="Command:",bodywidth=125,value=#"root:Packages:analysisTools:cmdList",mode=1,proc=atPopProc
-	Button AT_RunCmd win=analysis_tools,pos={260,5},size={50,20},title="Run",proc=atButtonProc
-	Button AT_Help win=analysis_tools,pos={210,5},size={20,20},title="?",proc=atButtonProc
+	PopUpMenu AT_CommandPop win=analysis_tools,pos={80,36},size={125,20},fsize=12, title="Command:",bodywidth=125,value=#"root:Packages:analysisTools:cmdList",mode=1,disable=1,proc=atPopProc
+	Button AT_RunCmd win=analysis_tools,pos={260,35},size={50,20},title="Run",disable=1,proc=atButtonProc
+	Button AT_Help win=analysis_tools,pos={210,35},size={20,20},title="?",disable=1,proc=atButtonProc
 	GroupBox AT_HelpBox win=analysis_tools,pos={7,269},size={326,200},disable=1
 	
 	//Variables
 	SetDrawEnv/W=analysis_tools#scanListPanel textxjust=1
-	Variable yPos = 60
+	Variable yPos = 80
 //	DrawText/W=analysis_tools 30,yPos,"Baseline"
 //	DrawText/W=analysis_tools 150,yPos,"Peak"
 //	DrawText/W=analysis_tools 250,yPos,"Trials"
@@ -438,12 +451,12 @@ Function LoadAnalysisSuite([left,top])
 	PopUpMenu errType win=analysis_tools,pos={20,120},size={50,20},title="Type",value="sem;sdev",disable=1
 	
 	//Duplicate/Rename
-	SetVariable prefixName win=analysis_tools,pos={20,50},size={50,20},title="P",value=_STR:"",disable=1
-	SetVariable groupName win=analysis_tools,pos={80,50},size={50,20},title="G",value=_STR:"",disable=1
-	SetVariable seriesName win=analysis_tools,pos={140,50},size={50,20},title="Se",value=_STR:"",disable=1
-	SetVariable sweepName win=analysis_tools,pos={200,50},size={50,20},title="Sw",value=_STR:"",disable=1
-	SetVariable traceName win=analysis_tools,pos={260,50},size={50,20},title="T",value=_STR:"",disable=1
-	Checkbox killOriginals win=analysis_tools,pos={20,70},size={100,20},title="Kill Originals",value=0,disable=1
+	SetVariable prefixName win=analysis_tools,pos={20,60},size={50,20},title="P",value=_STR:"",disable=1
+	SetVariable groupName win=analysis_tools,pos={80,60},size={50,20},title="G",value=_STR:"",disable=1
+	SetVariable seriesName win=analysis_tools,pos={140,60},size={50,20},title="Se",value=_STR:"",disable=1
+	SetVariable sweepName win=analysis_tools,pos={200,60},size={50,20},title="Sw",value=_STR:"",disable=1
+	SetVariable traceName win=analysis_tools,pos={260,60},size={50,20},title="T",value=_STR:"",disable=1
+	Checkbox killOriginals win=analysis_tools,pos={20,80},size={100,20},title="Kill Originals",value=0,disable=1
 	
 	//Load PClamp
 	Button OpenABF2Loader win=analysis_tools,pos={71,66},size={150,20},title="Open PClamp Loader",disable=1,proc=atButtonProc
@@ -494,7 +507,7 @@ Function LoadAnalysisSuite([left,top])
 	PopUpMenu maskListPopUp win=analysis_tools,pos={10,85},size={150,20},title="Masks",value=GetMaskWaveList(),disable=1
 	
 	//For Dynamic ROI
-	SetVariable dynamicROI_size win=analysis_tools,pos={10,40},size={80,20},title="Diameter",value=_NUM:6,disable=1
+	SetVariable dynamicROI_size win=analysis_tools,pos={12,65},size={80,50},title="Diameter",value=_NUM:6,disable=1
 	//For Operation
 	
 	SetVariable waveMatch win=analysis_tools,pos={40,40},size={162,20},fsize=10,title="Match",value=_STR:"*",help={"Matches waves in the selected folder.\rLogical 'OR' can be used via '||'"},disable=1,proc=atSetVarProc
@@ -574,8 +587,8 @@ Function LoadAnalysisSuite([left,top])
 	SVAR DSNames = root:Packages:analysisTools:DSNames
 	DSNames = "--None--;--Scan List--;--Item List--;" + textWaveToStringList(dataSetNames,";")
 	
-	PopUpMenu extFuncDS win=analysis_tools,pos={21,90},size={150,20},title="Waves",fSize=12,disable=1,value=#"root:Packages:analysisTools:DSNames",proc=atPopProc
-	PopUpMenu extFuncChannelPop win=analysis_tools,pos={175,90},size={100,20},fsize=12,title="CH",value="1;2",disable=1
+	PopUpMenu extFuncDS win=analysis_tools,pos={21,100},size={150,20},title="Waves",fSize=12,disable=1,value=#"root:Packages:analysisTools:DSNames",proc=atPopProc
+	PopUpMenu extFuncChannelPop win=analysis_tools,pos={180,100},size={100,20},fsize=12,title="CH",value="1;2",disable=1
 	Button extFuncHelp win=analysis_tools,pos={2,66},size={15,20},title="?",disable=1,proc=atButtonProc
 	
 	Make/N=0/T/O root:Packages:analysisTools:emptyWave
@@ -586,10 +599,10 @@ Function LoadAnalysisSuite([left,top])
 	SetVariable cmdLineStr win=analysis_tools,size={300,20},pos={21,65},fsize=12,title="Cmd:",value=_STR:"",disable=1
 	
 	//For Denoise
-	Checkbox overwriteCheck win=analysis_tools,size={60,20},pos={20,29},title="Overwrite",disable=1
-	SetVariable outputFolder win=analysis_tools,size={150,20},pos={90,30},title="Output Folder",value=_STR:"",disable=1
-	SetVariable scriptFolder win=analysis_tools,size={300,20},pos={20,50},title="Python Script Folder",value=_STR:"",disable=1
-	SetVariable denoiseDataFolder win=analysis_tools,size={300,20},pos={20,70},title="Denoise Data Folder",value=_STR:"",disable=1
+	Checkbox overwriteCheck win=analysis_tools,size={60,20},pos={20,59},title="Overwrite",disable=1
+	SetVariable outputFolder win=analysis_tools,size={150,20},pos={90,60},title="Output Folder",value=_STR:"",disable=1
+	SetVariable scriptFolder win=analysis_tools,size={300,20},pos={20,80},title="Python Script Folder",value=_STR:"",disable=1
+	SetVariable denoiseDataFolder win=analysis_tools,size={300,20},pos={20,100},title="Denoise Data Folder",value=_STR:"",disable=1
 	
 	//For MultiROI
 	CheckBox doDarkSubtract win=analysis_tools,pos={10,250},size={150,20},title="Dark Subtraction",disable=1
@@ -617,18 +630,18 @@ Function LoadAnalysisSuite([left,top])
 	CheckBox ch1Check,win=analysis_tools,pos={70,yPos},title="Ch1"
 	CheckBox ch2Check,win=analysis_tools,pos={110,yPos},title="Ch2"
 	CheckBox ratioCheck,win=analysis_tools,pos={150,yPos},title="Ratio"
-	PopUpMenu dFAbsMenu,win=analysis_tools,pos={10,yPos},value="∆;Abs",title="",disable=1
+	PopUpMenu dFAbsMenu,win=analysis_tools,pos={10,yPos-20},value="∆;Abs",title="",disable=1
 		
 	yPos += 20
-	CheckBox getPeaksCheck,win=analysis_tools,pos={10,yPos},title="Get Peaks"
-	SetVariable pkWindow win=analysis_tools,title="Width",pos={68,yPos+1},bodywidth=35,value=_NUM:0,limits={0,inf,0.05},size={80,20},disable=0
+	CheckBox getPeaksCheck,win=analysis_tools,pos={10,yPos-20},title="Get Peaks"
+	SetVariable pkWindow win=analysis_tools,title="Width",pos={68,yPos-19},bodywidth=35,value=_NUM:0,limits={0,inf,0.05},size={80,20},disable=0
 	
 	yPos +=20
-	CheckBox doAvgCheck,win=analysis_tools,pos={10,yPos},title="Get tAvg"
-	CheckBox doAvgROIsCheck,win=analysis_tools,pos={90,yPos},title="Avg ROIs"
+	CheckBox doAvgCheck,win=analysis_tools,pos={10,yPos-20},title="Get tAvg"
+	CheckBox doAvgROIsCheck,win=analysis_tools,pos={90,yPos-20},title="Avg ROIs"
 	
 	yPos += 20
-	SetVariable angleList win=analysis_tools,title="Angles",pos={10,yPos-1},value=_STR:"",size={175,20},disable=0
+	SetVariable angleList win=analysis_tools,title="Angles",pos={10,yPos},value=_STR:"",size={175,20},disable=0
 	
 	yPos += 20
 	Wave/T/Z presetAngleWave = root:Packages:analysisTools:presetAngleWave
@@ -651,9 +664,9 @@ Function LoadAnalysisSuite([left,top])
 		presetAngleLists += presetAngleWave[i][0] + ";"
 	EndFor
 
-	PopUpMenu presetAngleListPop win=analysis_tools,title="Presets",pos={10,yPos-1},size={80,20},value=#"root:Packages:analysisTools:presetAngleLists",disable=0,proc=atPopProc
-	Button addPresetAngle win=analysis_tools,title="+",pos={100,yPos-1},size={20,20},disable=1,proc=atButtonProc
-	Button deletePresetAngle win=analysis_tools,title="-",pos={125,yPos-1},size={20,20},disable=1,proc=atButtonProc
+	PopUpMenu presetAngleListPop win=analysis_tools,title="Presets",pos={10,yPos-21},size={80,20},value=#"root:Packages:analysisTools:presetAngleLists",disable=0,proc=atPopProc
+	Button addPresetAngle win=analysis_tools,title="+",pos={100,yPos-21},size={20,20},disable=1,proc=atButtonProc
+	Button deletePresetAngle win=analysis_tools,title="-",pos={125,yPos-21},size={20,20},disable=1,proc=atButtonProc
 	
 	DrawAction/W=analysis_tools delete
 	ChangeControls("Data Sets","MultiROI")
@@ -1227,13 +1240,13 @@ Function ChangeControls(currentCmd,prevCmd)
 			CheckBox ch1Check,win=analysis_tools,pos={26,61}
 			CheckBox ch2Check,win=analysis_tools,pos={61,61}
 			CheckBox ratioCheck,win=analysis_tools,pos={26,82}
-			PopUpMenu extFuncDS win=analysis_tools,pos={21,110}
+			PopUpMenu extFuncDS win=analysis_tools,pos={21,120}
 			ListBox extFuncDSListBox win=analysis_tools,pos={21,136}
 			ControlInfo/W=analysis_tools extFuncDS
 			If(cmpstr(S_Value,"--Scan List--") != 0)
-				PopUpMenu extFuncChannelPop win=analysis_tools,pos={175,110},disable=1
+				PopUpMenu extFuncChannelPop win=analysis_tools,pos={180,120},disable=1
 			Else
-				PopUpMenu extFuncChannelPop win=analysis_tools,pos={175,110},disable=0
+				PopUpMenu extFuncChannelPop win=analysis_tools,pos={180,120},disable=0
 			EndIf
 			break
 		case "Line Profile":
@@ -1273,17 +1286,17 @@ Function ChangeControls(currentCmd,prevCmd)
 			CheckBox ch2Check,win=analysis_tools,pos={50,61}
 			break
 		case "Display ROIs":
-			PopUpMenu presetAngleListPop,win=analysis_tools,pos={10,124}
-			Button addPresetAngle,win=analysis_tools,pos={140,124}
-			Button deletePresetAngle,win=analysis_tools,pos={165,124}
-			CheckBox ch1Check,win=analysis_tools,pos={10,39}
-			CheckBox ch2Check,win=analysis_tools,pos={50,39}
-			CheckBox ratioCheck,win=analysis_tools,pos={90,39}
+			PopUpMenu presetAngleListPop,win=analysis_tools,pos={10,144}
+			Button addPresetAngle,win=analysis_tools,pos={140,144}
+			Button deletePresetAngle,win=analysis_tools,pos={165,144}
+			CheckBox ch1Check,win=analysis_tools,pos={10,59}
+			CheckBox ch2Check,win=analysis_tools,pos={50,59}
+			CheckBox ratioCheck,win=analysis_tools,pos={90,59}
 			break
 		case "External Function":			
 			ControlInfo/W=analysisTools extFuncPopUp
 			ResolveFunctionParameters("AT_" + S_Value)
-			PopUpMenu extFuncDS win=analysis_tools,pos={21,90}
+			PopUpMenu extFuncDS win=analysis_tools,pos={21,100}
 			ListBox extFuncDSListBox win=analysis_tools,pos={180,121}
 			break
 		case "Data Sets":
@@ -1307,8 +1320,8 @@ Function ChangeControls(currentCmd,prevCmd)
 			SetDrawLayer/W=analysis_tools ProgBack
 			break
 		case "Mask Image":
-			PopUpMenu maskListPopUp win=analysis_tools,value=GetMaskWaveList(),pos={20,50}
-		case "Denoise":
+			PopUpMenu maskListPopUp win=analysis_tools,value=GetMaskWaveList(),pos={20,76}
+		case "Apply Map Threshold":
 		case "Max Project":
 		case "Dynamic ROI":
 		case "Duplicate/Rename":
@@ -1316,9 +1329,16 @@ Function ChangeControls(currentCmd,prevCmd)
 		case "Error":
 		case "Kill Waves":
 		case "Run Cmd Line":
-			PopUpMenu extFuncChannelPop win=analysis_tools,pos={21,90},disable=1
+			PopUpMenu extFuncDS win=analysis_tools,pos={21,100}
+			PopUpMenu extFuncChannelPop win=analysis_tools,pos={180,100},disable=1
 			ListBox extFuncDSListBox win=analysis_tools,pos={180,121},disable=1
 			ControlInfo/W=analysis_tools extFuncDS
+			SetExtFuncMenus(S_Value)
+			break
+		case "Denoise":
+			PopUpMenu extFuncDS win=analysis_tools,pos={21,120}
+			PopUpMenu extFuncChannelPop win=analysis_tools,pos={180,120}
+			ListBox extFuncDSListBox win=analysis_tools,pos={180,141}
 			SetExtFuncMenus(S_Value)
 			break
 		case "MultiROI":
@@ -1357,9 +1377,124 @@ Function ChangeControls(currentCmd,prevCmd)
 			Button deletePresetAngle,win=analysis_tools,pos={165,205}
 			CheckBox RemoveLaserResponseCheck win=analysis_tools,pos={10,231}
 			CheckBox doDarkSubtract win=analysis_tools,pos={10,250}
-			PopUpMenu extFuncDS win=analysis_tools,pos={21,90}
+			PopUpMenu extFuncDS win=analysis_tools,pos={21,100}
 			ListBox extFuncDSListBox win=analysis_tools,pos={180,121}
 			break
 	endswitch
 
+End
+
+//returns the list of controls for each command
+Function/S getControlList(command)
+	String command
+	strswitch(command)
+		case "MultiROI":
+			SVAR ctrlList = root:Packages:analysisTools:ctrlList_multiROI
+			break
+		case "dF Map":
+			SVAR ctrlList = root:Packages:analysisTools:ctrlList_dfMap
+			break
+		case "Average":
+			SVAR ctrlList = root:Packages:analysisTools:ctrlList_average
+			break
+		case "Error":
+			SVAR ctrlList = root:Packages:analysisTools:ctrlList_error
+			break
+		case "Space-Time dF":
+			SVAR ctrlList = root:Packages:analysisTools:ctrlList_spacetimeDF
+			break
+		case "qkSpot":
+			SVAR ctrlList = root:Packages:analysisTools:ctrlList_qkSpot
+			break
+		case "ROI Tuning Curve":
+			SVAR ctrlList = root:Packages:analysisTools:ctrlList_roiTuningCurve
+			break
+		case "Display ROIs":
+			SVAR ctrlList = root:Packages:analysisTools:ctrlList_displayROIs
+			break
+		case "Adjust Galvo Distortion":
+			SVAR ctrlList = root:Packages:analysisTools:ctrlList_adjustGalvoDistort
+			break
+		case "Get Dendritic Mask":
+			SVAR ctrlList = root:Packages:analysisTools:ctrlList_getDendriticMask
+			break
+		case "Mask Image":
+			SVAR ctrlList = root:Packages:analysisTools:ctrlList_maskImage
+			break
+		case "Operation":
+			SVAR ctrlList = root:Packages:analysisTools:ctrlList_operation
+			break
+		case "Get Peaks":
+			SVAR ctrlList = root:Packages:analysisTools:ctrlList_getPeaks
+			break
+		case "Line Profile":
+			SVAR ctrlList = root:Packages:analysisTools:ctrlList_lineProfile
+			break
+		case "ROI Segmenter":
+			SVAR ctrlList = root:Packages:analysisTools:ctrlList_roiSegmenter
+			break
+		case "Register Image":
+			SVAR ctrlList = root:Packages:analysisTools:ctrlList_registerImage
+			break
+		case "ROI From Map":
+			SVAR ctrlList = root:Packages:analysisTools:ctrlList_roiFromMap
+			break
+		case "Vector Sum Map":
+			SVAR ctrlList = root:Packages:analysisTools:ctrlList_vectorSumMap
+			break
+		case "Dynamic ROI":
+			SVAR ctrlList = root:Packages:analysisTools:ctrlList_dynamicROI
+			break
+		case "Rescale Scans":
+			SVAR ctrlList = root:Packages:analysisTools:ctrlList_rescaleScans
+			break
+		case "Data Sets":
+			SVAR ctrlList = root:Packages:analysisTools:ctrlList_dataSets
+			break
+		case "Get Peak Times":
+			SVAR ctrlList = root:Packages:analysisTools:ctrlList_getPeakTimes
+			break
+		case "ROI Grid":
+			SVAR ctrlList = root:Packages:analysisTools:ctrlList_roiGrid
+			break
+		case "Filter ROI":
+			SVAR ctrlList = root:Packages:analysisTools:ctrlList_filterROI
+			break
+		case "Kill ROI":
+			SVAR ctrlList = root:Packages:analysisTools:ctrlList_killROI
+			break
+		case "Denoise":
+			SVAR ctrlList = root:Packages:analysisTools:ctrlList_denoise
+			break
+		case "Load PClamp":
+			SVAR ctrlList = root:Packages:analysisTools:ctrlList_loadPClamp
+			break
+		case "Browse PClamp":
+			SVAR ctrlList = root:Packages:analysisTools:ctrlList_browsePClamp
+			break
+		case "Load Stimulus Data":
+			SVAR ctrlList = root:Packages:analysisTools:ctrlList_LoadStimulusData
+			break
+		case "Kill Waves":
+			SVAR ctrlList = root:Packages:analysisTools:ctrlList_killwaves
+			break
+		case "Duplicate/Rename":
+			SVAR ctrlList = root:Packages:analysisTools:ctrlList_duplicateRename
+			break
+		case "External Function":
+			SVAR ctrlList = root:Packages:analysisTools:ctrlList_extFunc
+			ControlInfo/W=analysis_tools extFuncPopUp
+			ResolveFunctionParameters("AT_" + S_Value)
+			break	
+		case "Run Cmd Line":
+			SVAR ctrlList = root:Packages:analysisTools:ctrlList_runCmdLine
+			break
+		case "Max Project":
+			SVAR ctrlList = root:Packages:analysisTools:ctrlList_maxProj
+			break
+		case "Apply Map Threshold":
+			SVAR ctrlList = root:Packages:analysisTools:ctrlList_applyMapThreshold
+			break
+	endswitch
+	return ctrlList
 End
