@@ -1101,15 +1101,15 @@ Function switchTabs(newTab)
 			ModifyControlList/Z ctrlList_dataSets win=analysis_tools,disable=1 //hide all controls
 			SetDrawLayer/K/W=analysis_tools UserBack
 			If(stringmatch(dsFunctions,"*" + currentCmd + "*"))
-				
-				//refresh the values in the external parameter variables
-
-				ControlInfo/W=analysis_tools extFuncPopUp
-				ResolveFunctionParameters("AT_" + S_Value)
-				recallExtFuncValues(S_Value)
-				
 				ControlInfo/W=analysis_tools extFuncDS
 				SetExtFuncMenus(S_Value)
+				
+				If(stringmatch("External Function",currentCmd))
+					//refresh the values in the external parameter variables
+					ControlInfo/W=analysis_tools extFuncPopUp
+					ResolveFunctionParameters("AT_" + S_Value)
+					recallExtFuncValues(S_Value)
+				EndIf
 			
 			EndIf
 			break
