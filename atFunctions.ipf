@@ -6248,3 +6248,93 @@ Function sortCorrMatrix(matrix,roiTable)
 	EndFor
 	
 End
+
+//inputs spike recording, outputs histograms
+Function PSTH()
+	ControlInfo/W=analysis_tools binSize
+	Variable binSize = V_Value
+	ControlInfo/W=analysis_tools spkThreshold
+	Variable threshold = V_Value
+	ControlInfo/W=analysis_tools histType
+	String type = S_Value
+	
+	Variable i,j,numWaves,numBins
+	
+	//Get the waves
+	String waveNameList = getWaveNames()
+	numWaves = ItemsInList(waveNameList,";")
+	
+	For(i=0;i<numWaves;i+=1)
+		Wave theWave = $StringFromList(i,waveNameList,";")
+		SetDataFolder GetWavesDataFolder(theWave,1)
+		
+		//get spike times
+		FindLevels/EDGE=1/M=0.002/D=spktm theWave,threshold
+		
+		strswitch(type)
+			case "Binned":	
+				numBins = floor((IndexToScale(theWave,DimSize(theWave,0)-1,0) - IndexToScale(theWave,0,0) )/ binSize) //number of bins in wave
+				Make/O $(NameOfWave(theWave) + "_hist")
+				Histogram/C/B={pnt2x(theWave,0),binSize,numBins} spktm,$(NameOfWave(theWave) + "_hist")
+				Wave hist = $(NameOfWave(theWave) + "_hist")
+				hist /= binSize
+				
+				KillWaves spktm
+				break
+			case "Gaussian":
+				Variable dT = DimDelta(theWave,0)
+				Variable sampleRate = 1000 // 1 ms time resolution
+				//gaussian template for convolution
+				Make/O/N=(3*(binSize*sampleRate)+1) root:var:template
+				Wave template = root:var:template
+				SetScale/I x,-1.5*binSize,1.5*binSize,template
+				template = exp((-x^2/(0.5*binSize)^2)/2)
+				
+				Variable theSum = sum(template)
+				template /= (1000*binSize)
+				
+				Variable histDelta = (DimSize(theWave,0)*dT)/sampleRate
+				Make/O/FREE/N=(DimSize(theWave,0)*dT*sampleRate) raster
+				
+				SetScale/P x,0,1/sampleRate,raster
+				raster = 0
+				
+				For(j=0;j<DimSize(spktm,0);j+=1)
+					raster[x2pnt(raster,spktm[j])] = 1
+				Endfor
+	
+				Duplicate/O template,$(NameOfWave(theWave) + "_hist");DelayUpdate
+				Wave hist = $(NameOfWave(theWave) + "_hist")
+				
+				Convolve raster, hist
+				hist *=1000
+				
+				break
+		endswitch	
+	EndFor
+	
+End
+
+//Set a note for the waves
+Function AT_setWaveNote()
+	ControlInfo/W=analysis_tools waveNote
+	String theNote = S_Value
+	ControlInfo/W=analysis_tools overwriteNote
+	Variable overwrite = V_Value
+	
+	//Get the waves
+	String waveNameList = getWaveNames()
+	Variable i,numWaves = ItemsInList(waveNameList,";")
+	
+	For(i=0;i<numWaves;i+=1)
+		Wave theWave = $StringFromList(i,waveNameList,";")
+		SetDataFolder GetWavesDataFolder(theWave,1)
+		
+		If(overwrite)
+			Note/K theWave,theNote
+		Else
+			Note theWave,theNote
+		EndIf
+	EndFor
+
+End

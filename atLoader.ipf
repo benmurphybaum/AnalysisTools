@@ -72,7 +72,7 @@ Function CreatePackages()
 	
 	//packageTable[1][0] = "Basic Functions"
 	//packageTable[1][1] = "-------------------;Average;Error"
-	cmdList = "External Function;---------------;Load PClamp;Browse PClamp;Load Stimulus Data;---------------;Run Cmd Line;Average;Error;Kill Waves;Duplicate/Rename;----Packages----;"
+	cmdList = "External Function;---------------;Load PClamp;Load Stimulus Data;---------------;Run Cmd Line;Average;Error;PSTH;Kill Waves;Duplicate/Rename;Set Wave Note;----Packages----;"
 	
 	For(i=0;i<DimSize(packageTable,0);i+=1)
 		If(!strlen(packageTable[i][0]))
@@ -450,6 +450,12 @@ Function LoadAnalysisSuite([left,top])
 	//Errors
 	PopUpMenu errType win=analysis_tools,pos={20,120},size={50,20},title="Type",value="sem;sdev",disable=1
 	
+	//PSTH
+	PopUpMenu histType win=analysis_tools,pos={20,130},size={90,20},title="Type",value="Binned;Gaussian",disable=1
+	SetVariable spkThreshold win=analysis_tools,pos={20,160},size={90,20},title="Threshold",value=_NUM:0,disable=1
+	SetVariable binSize win=analysis_tools,pos={29,180},size={81,20},title="Bin Size",value=_NUM:0,disable=1
+	
+	
 	//Duplicate/Rename
 	SetVariable prefixName win=analysis_tools,pos={20,60},size={50,20},title="P",value=_STR:"",disable=1
 	SetVariable groupName win=analysis_tools,pos={80,60},size={50,20},title="G",value=_STR:"",disable=1
@@ -457,6 +463,10 @@ Function LoadAnalysisSuite([left,top])
 	SetVariable sweepName win=analysis_tools,pos={200,60},size={50,20},title="Sw",value=_STR:"",disable=1
 	SetVariable traceName win=analysis_tools,pos={260,60},size={50,20},title="T",value=_STR:"",disable=1
 	Checkbox killOriginals win=analysis_tools,pos={20,80},size={100,20},title="Kill Originals",value=0,disable=1
+	
+	//Set Wave Note
+	SetVariable waveNote win=analysis_tools,size={300,20},pos={21,65},fsize=12,title="Note:",value=_STR:"",disable=1
+	CheckBox overwriteNote win=analysis_tools,pos={20,125},size={100,20},title="Overwrite Note",value=0,disable=1
 	
 	//Load PClamp
 	Button OpenABF2Loader win=analysis_tools,pos={71,66},size={150,20},title="Open PClamp Loader",disable=1,proc=atButtonProc
@@ -724,6 +734,11 @@ Function CreateControlLists(cmdList)
 	SVAR ctrlList_error = root:Packages:analysisTools:ctrlList_error
 	ctrlList_error = "extFuncDS;extFuncChannelPop;extFuncDSListBox;errType;outFolder"
 	
+	//PSTH
+	String/G root:Packages:analysisTools:ctrlList_psth
+	SVAR ctrlList_psth = root:Packages:analysisTools:ctrlList_psth
+	ctrlList_psth = "extFuncDS;extFuncChannelPop;extFuncDSListBox;binSize;spkThreshold;histType;"
+	
 	//Kill Waves
 	String/G root:Packages:analysisTools:ctrlList_killwaves
 	SVAR ctrlList_killwaves = root:Packages:analysisTools:ctrlList_killwaves
@@ -733,6 +748,11 @@ Function CreateControlLists(cmdList)
 	String/G root:Packages:analysisTools:ctrlList_duplicateRename
 	SVAR ctrlList_duplicateRename = root:Packages:analysisTools:ctrlList_duplicateRename
 	ctrlList_duplicateRename = "extFuncDS;extFuncChannelPop;extFuncDSListBox;prefixName;groupName;SeriesName;SweepName;TraceName;killOriginals;"
+	
+	//Set Wave Note
+	String/G root:Packages:analysisTools:ctrlList_setWaveNote
+	SVAR ctrlList_setWaveNote = root:Packages:analysisTools:ctrlList_setWaveNote
+	ctrlList_setWaveNote = "extFuncDS;extFuncChannelPop;extFuncDSListBox;waveNote;overwriteNote;"
 	
 	//Space-Time dF
 	String/G root:Packages:analysisTools:ctrlList_spacetimeDF
@@ -918,6 +938,12 @@ Function ChangeControls(currentCmd,prevCmd)
 		case "Error":
 			SVAR ctrlList = root:Packages:analysisTools:ctrlList_error
 			break
+		case "PSTH":
+			SVAR ctrlList = root:Packages:analysisTools:ctrlList_psth
+			break
+		case "Set Wave Note":
+			SVAR ctrlList = root:Packages:analysisTools:ctrlList_setWaveNote
+			break
 		case "Space-Time dF":
 			SVAR ctrlList = root:Packages:analysisTools:ctrlList_spacetimeDF
 			break
@@ -1041,6 +1067,14 @@ Function ChangeControls(currentCmd,prevCmd)
 		case "Error":
 			SVAR ctrlList = root:Packages:analysisTools:ctrlList_error
 			runCmdStr = "ErrorWaves()"
+			break
+		case "PSTH":
+			SVAR ctrlList = root:Packages:analysisTools:ctrlList_psth
+			runCmdStr = "PSTH()"
+			break
+		case "Set Wave Note":
+			SVAR ctrlList = root:Packages:analysisTools:ctrlList_setWaveNote
+			runCmdStr = "AT_setWaveNote()"
 			break
 		case "Space-Time dF":
 			SVAR ctrlList = root:Packages:analysisTools:ctrlList_spacetimeDF
@@ -1327,6 +1361,8 @@ Function ChangeControls(currentCmd,prevCmd)
 		case "Duplicate/Rename":
 		case "Average":
 		case "Error":
+		case "PSTH":
+		case "Set Wave Note":
 		case "Kill Waves":
 		case "Run Cmd Line":
 			PopUpMenu extFuncDS win=analysis_tools,pos={21,100}
@@ -1399,6 +1435,12 @@ Function/S getControlList(command)
 			break
 		case "Error":
 			SVAR ctrlList = root:Packages:analysisTools:ctrlList_error
+			break
+		case "PSTH":
+			SVAR ctrlList = root:Packages:analysisTools:ctrlList_psth
+			break
+		case "Set Wave Note":
+			SVAR ctrlList = root:Packages:analysisTools:ctrlList_setWaveNote
 			break
 		case "Space-Time dF":
 			SVAR ctrlList = root:Packages:analysisTools:ctrlList_spacetimeDF
