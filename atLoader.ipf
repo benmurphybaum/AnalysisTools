@@ -72,7 +72,7 @@ Function CreatePackages()
 	
 	//packageTable[1][0] = "Basic Functions"
 	//packageTable[1][1] = "-------------------;Average;Error"
-	cmdList = "External Function;---------------;Load PClamp;Load Stimulus Data;---------------;Run Cmd Line;Average;Error;PSTH;Kill Waves;Duplicate/Rename;Set Wave Note;----Packages----;"
+	cmdList = "External Function;---------------;Load PClamp;Load Stimulus Data;Clean Desk;---------------;Run Cmd Line;Average;Error;PSTH;Kill Waves;Duplicate/Rename;Set Wave Note;----Packages----;"
 	
 	For(i=0;i<DimSize(packageTable,0);i+=1)
 		If(!strlen(packageTable[i][0]))
@@ -590,11 +590,14 @@ Function LoadAnalysisSuite([left,top])
 	PopUpMenu thresholdType win=analysis_tools,pos={10,156},size={140,20},title="Threshold Type",value="∆F/F;SNR",disable=1
 	SetVariable roiThreshold win=analysis_tools,pos={145,158},size={40,20},title="",limits={0,inf,0.05},value=_NUM:1,disable=1
 	
+	//For Clean Desk
+	PopUpMenu cleanDeskPop win=analysis_tools,pos={16,70},fsize=12,size={140,20},title="Option",value="Hide All;Hide Layouts/Kill Rest;Kill All",disable=1
+	
 	//For External Functions
 	PopUpMenu extFuncPopUp win=analysis_tools,pos={21,67},size={150,200},title="Functions:",fSize=12,disable=1,value=#"root:Packages:analysisTools:extFuncList",proc=atPopProc
 	
-	String/G root:Packages:analysisTools:DSNames
-	SVAR DSNames = root:Packages:analysisTools:DSNames
+	String/G root:Packages:analysisTools:DataSets:DSNames
+	SVAR DSNames = root:Packages:analysisTools:DataSets:DSNames
 	DSNames = "--None--;--Scan List--;--Item List--;" + textWaveToStringList(dataSetNames,";")
 	
 	PopUpMenu extFuncDS win=analysis_tools,pos={21,100},size={150,20},title="Waves",fSize=12,disable=1,value=#"root:Packages:analysisTools:DSNames",proc=atPopProc
@@ -902,6 +905,10 @@ Function CreateControlLists(cmdList)
 	SVAR ctrlList_maxProj = root:Packages:analysisTools:ctrlList_maxProj
 	ctrlList_maxProj = "extFuncDS;extFuncChannelPop;extFuncDSListBox"
 	
+	//Clean Desk
+	String/G root:Packages:analysisTools:ctrlList_cleanDesk
+	SVAR ctrlList_cleanDesk = root:Packages:analysisTools:ctrlList_cleanDesk
+	ctrlList_cleanDesk = "cleanDeskPop;"
 End
 
 Function ChangeControls(currentCmd,prevCmd)
@@ -1038,6 +1045,9 @@ Function ChangeControls(currentCmd,prevCmd)
 			break
 		case "Apply Map Threshold":
 			SVAR ctrlList = root:Packages:analysisTools:ctrlList_applyMapThreshold
+			break
+		case "Clean Desk":
+			SVAR ctrlList = root:Packages:analysisTools:ctrlList_cleanDesk
 			break
 	endswitch
 	
@@ -1199,6 +1209,10 @@ Function ChangeControls(currentCmd,prevCmd)
 		case "Apply Map Threshold":
 			SVAR ctrlList = root:Packages:analysisTools:ctrlList_applyMapThreshold
 			runCmdStr = "mapThresh()"
+			break
+		case "Clean Desk":
+			SVAR ctrlList = root:Packages:analysisTools:ctrlList_cleanDesk
+			runCmdStr = "AT_cleanDesk()"
 			break
 		default:
 			//Loads a package if its not a function
@@ -1536,6 +1550,9 @@ Function/S getControlList(command)
 			break
 		case "Apply Map Threshold":
 			SVAR ctrlList = root:Packages:analysisTools:ctrlList_applyMapThreshold
+			break
+		case "Clean Desk":
+			SVAR ctrlList = root:Packages:analysisTools:ctrlList_cleanDesk
 			break
 	endswitch
 	return ctrlList

@@ -43,6 +43,13 @@ Function delDataSet(selectedRow)
 	Wave ogDataSetWave = $("root:Packages:analysisTools:DataSets:ogDS_" + dataSetName)
 	DeletePoints/M=0 selectedRow,1,dataSetNames,dataSetSelWave,ogDataSetWave,dsFilters
 	KillWaves/Z theDataSetWave,ogDataSetWave
+	
+	//Reload the data set names
+	GetDataSetNames()
+	
+	SVAR DSNames = root:Packages:analysisTools:DataSets:DSNames
+	DSNames = "--None--;--Scan List--;--Item List--;" + textWaveToStringList(dataSetNames,";")
+	PopUpMenu extFuncDS win=analysis_tools,value=#"root:Packages:analysisTools:DataSets:DSNames"
 End
 
 //Adds the wave to a new dataset for quick result viewing
@@ -1118,13 +1125,16 @@ Function sortByWaveGroup(original,ds,value)
 				//Redimension/N=(DimSize(original,0)) ds
 				//ds = original
 				break
-			default:
-				//group by the index
-
-				//If the data set is already grouped, must do next grouping within that structure
+			case -1:
+				//group by folder
 				Variable m,numWaveSets = GetNumWaveSets(dataSetName)
 				String wsDims = GetWaveSetDims(dataSetName)
 				numWaves = DimSize(ds,0)
+				
+				//origin folders for the data set
+				Wave/T folderSelection = root:Packages:analysisTools:DataSets:dsSelection
+				Variable index = tableMatch(dataSetName,folderSelection)
+				String folders = folderSelection[index][2]
 				
 				//make fresh working waves
 				Make/T/FREE/N=(numWaves) tempDS
@@ -1139,6 +1149,96 @@ Function sortByWaveGroup(original,ds,value)
 					//uses block of waves from each subsequent waveset
 					numWaves = str2num(StringFromList(m,wsDims,";"))
 					String theWaves = getWaveSet(dataSetName,wsn=m)
+					
+					For(j=0;j<ItemsInList(folders,";");j+=1)
+						String theFolder = StringFromList(j,folders,";")
+						
+						If(matched[j + count] != -1)
+							continue
+						EndIf
+						
+						//name = ParseFilePath(0,ds[j],":",1,0)
+						String folder = ParseFilePath(1,StringFromList(j,theWaves,";"),":",1,0) //folder of the wave
+						
+						For(k=0;k<numWaves;k+=1)
+							If(matched[k + count] != -1)
+								continue
+							EndIf
+							//matchName = ParseFilePath(0,ds[k],":",1,0)
+							matchName = ParseFilePath(0,StringFromList(k,theWaves,";"),":",1,0)
+							matchTerm = StringFromList(item,matchName,"_")
+						
+							If(!cmpstr(term,matchTerm))
+								matched[k + count] = wsn
+							EndIf	
+							
+						EndFor
+						wsn += 1
+					EndFor
+					count += numWaves
+				EndFor
+				
+				//Label first wave set, if there are more than 1
+				count = 0
+
+				//make copy of it without the wave set labels
+				Variable size = DimSize(original2,0)
+				For(j=0;j<size;j+=1)
+					If(stringmatch(original2[j],"*WSN*"))
+						DeletePoints j,1,original2
+						j -= 1
+						size -= 1
+					EndIf
+				EndFor
+				
+				If(wsn > 0)
+					InsertPoints 0,1,tempDS
+					tempDS[count] = "----WSN 0----"
+					count += 1
+				EndIf
+				
+				//sort data set
+				numWaves = DimSize(original,0)
+								
+				For(j=0;j<wsn;j+=1)
+					For(k=0;k<numWaves;k+=1)
+						If(matched[k] == j)
+							tempDS[count] = original2[k]
+							count +=1
+						EndIf	
+					EndFor
+					
+					If(j<wsn-1)
+						InsertPoints count,1,tempDS
+						tempDS[count] = "----WSN " + num2str(j+1) + "----"
+					EndIf
+					count+=1
+				EndFor
+				
+				Redimension/N=(DimSize(tempDS,0)) ds
+				ds = tempDS
+				break
+			default:
+				//group by the index
+
+				//If the data set is already grouped, must do next grouping within that structure
+				numWaveSets = GetNumWaveSets(dataSetName)
+				wsDims = GetWaveSetDims(dataSetName)
+				numWaves = DimSize(ds,0)
+				
+				//make fresh working waves
+				Make/T/FREE/N=(numWaves) tempDS
+				Make/FREE/N=(numWaves) matched
+				Make/T/FREE/N=(DimSize(ds,0)) original2
+				original2 = ds
+				
+				matched = -1	
+				count = 0
+				
+				For(m=0;m<numWaveSets;m+=1)
+					//uses block of waves from each subsequent waveset
+					numWaves = str2num(StringFromList(m,wsDims,";"))
+					theWaves = getWaveSet(dataSetName,wsn=m)
 					
 					For(j=0;j<numWaves;j+=1)
 						
@@ -1172,7 +1272,7 @@ Function sortByWaveGroup(original,ds,value)
 				count = 0
 
 				//make copy of it without the wave set labels
-				Variable size = DimSize(original2,0)
+				size = DimSize(original2,0)
 				For(j=0;j<size;j+=1)
 					If(stringmatch(original2[j],"*WSN*"))
 						DeletePoints j,1,original2

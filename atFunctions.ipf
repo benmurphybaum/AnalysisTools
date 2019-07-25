@@ -6311,8 +6311,8 @@ Function PSTH()
 				
 				break
 		endswitch	
+		
 	EndFor
-	
 End
 
 //Set a note for the waves
@@ -6337,4 +6337,105 @@ Function AT_setWaveNote()
 		EndIf
 	EndFor
 
+End
+
+//Hides or kills all windows
+Function AT_cleanDesk()
+	//Hide All: hides all windows
+	//Hide Layouts/Kill Rest: if it's not part of a layout, kill the window
+	//Kill all: kills all windows
+
+	ControlInfo/W=analysis_tools cleanDeskPop
+	String mode = S_Value
+	
+	String list,info,graphList,currentGraph,layoutList,s
+	variable numItems,numPages,i,j,k,graphListItems,match
+	
+	//list of the layouts
+	layoutList = WinList("*",";","WIN:4")
+	
+	//gets the names of all the windows that are in the layouts
+	list="" 
+	For(k=0;k<ItemsInList(layoutList,";");k+=1)
+		s = StringFromList(k,layoutList,";")
+		
+		info = LayoutInfo(s,"Layout")
+		numPages = str2num(StringByKey("NUMPAGES",info,":",";"))
+		
+		For(j=1;j<=numPages;j+=1)
+			LayoutPageAction/W=$s page=j
+			info = LayoutInfo(s,"Layout")
+			numItems = str2num(StringByKey("NUMOBJECTS",info,":",";"))
+			For(i=0;i<numItems;i+=1)
+				info = LayoutInfo(s,num2str(i))
+				list += StringByKey("NAME",info,":",";") +";"
+			EndFor
+		EndFor
+	EndFor
+	
+	//these are the windows that are going to be killed or hidden
+	graphList = WinList("*",";","WIN:1")
+	graphListItems = ItemsInList(graphList,";")
+	//removes some important windows that might be around
+	graphList = RemoveFromList("WBr",graphList,";")  //removes Wave Browser 
+	graphList = RemoveFromList("analysis_tools",graphList,";")//removes analysis tools
+	graphList = RemoveFromList("twoP_Controls",graphList,";")//removes 2PLSM control panel
+	
+	strswitch(mode)
+		case "Hide All":
+			//Hides if not included in a layout
+			For(k=0;k<graphListItems;k+=1)
+				currentGraph =StringFromList(k,graphList,";")
+				match = StringMatch(list,"*" + currentGraph + "*")
+				If(match == 0)
+					DoWindow/HIDE=1 $currentGraph
+				EndIf
+			EndFor
+			
+			//Hides if included in a layout
+			numItems = ItemsInList(list,";")
+			For(i=0;i<numItems;i+=1)
+				currentGraph = StringFromList(i,list,";")
+				DoWindow/HIDE=1 $currentGraph
+			EndFor
+			break
+		case "Hide Layouts/Kill Rest":
+			//Kills if not included in a layout
+			For(k=0;k<graphListItems;k+=1)
+				currentGraph =StringFromList(k,graphList,";")
+				match = StringMatch(list,"*" + currentGraph + "*")
+				If(match == 0)
+					KillWindow /Z $currentGraph
+				EndIf
+			EndFor
+			
+			//Hides if included in a layout
+			numItems = ItemsInList(list,";")
+			For(i=0;i<numItems;i+=1)
+				currentGraph = StringFromList(i,list,";")
+				DoWindow/HIDE=1 $currentGraph
+			EndFor
+			break
+		case "Kill All":
+			//Kills if not included in a layout
+			For(k=0;k<graphListItems;k+=1)
+				currentGraph =StringFromList(k,graphList,";")
+				match = StringMatch(list,"*" + currentGraph + "*")
+				If(match == 0)
+					KillWindow /Z $currentGraph
+				EndIf
+			EndFor
+			
+			//Kills if included in a layout
+			numItems = ItemsInList(list,";")
+			For(i=0;i<numItems;i+=1)
+				currentGraph = StringFromList(i,list,";")
+				KillWindow/Z $currentGraph
+			EndFor
+			break
+			
+			break
+	endswitch
+	
+	DoWindow/F WBr //Keeps Wave Browser visible
 End
