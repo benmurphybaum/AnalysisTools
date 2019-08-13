@@ -91,7 +91,7 @@ Function outputDS(outWave)
 	ogdsOut[wsn] = GetWavesDataFolder(outWave,2)
 	
 	//Set the data set list for use in external functions
-	SVAR DSNames = root:Packages:analysisTools:DSNames
+	SVAR DSNames = root:Packages:analysisTools:DataSets:DSNames
 	DSNames = "--None--;--Scan List--;--Item List--;" + textWaveToStringList(dataSetNames,";")
 	
 	Variable i
@@ -945,8 +945,9 @@ Function checkWaveSets(ds)
 End
 
 //Takes input of prefix,group,series,sweep, or trace and filters the wave list accordingly
-Function/S filterByGroup(ds)
+Function/S filterByGroup(ds[,bufferZero])
 	Wave/T/Z ds
+	Variable bufferZero
 	
 	//List out all of the waves in the grouped data set
 	String theList = TableToList(ds,",")
@@ -997,6 +998,12 @@ Function/S filterByGroup(ds)
 			For(j=0;j<numTerms;j+=1)
 				//subterm within prefix/group/etc.
 				theTerm = StringFromList(j,filterTerms,",")
+				
+				//removes the zero buffer, if present
+				If(numtype(str2num(waveTerm)) != 2 && bufferZero)
+					waveTerm = num2str(str2num(waveTerm))
+				EndIf
+				
 				If(cmpstr(waveTerm,theTerm))
 				//no match
 					match = 0
@@ -1131,6 +1138,9 @@ Function sortByWaveGroup(original,ds,value)
 				String wsDims = GetWaveSetDims(dataSetName)
 				numWaves = DimSize(ds,0)
 				
+				ControlInfo/W=analysis_tools relativeFolderMatch
+				String relFolder = S_Value
+				
 				//origin folders for the data set
 				Wave/T folderSelection = root:Packages:analysisTools:DataSets:dsSelection
 				Variable index = tableMatch(dataSetName,folderSelection)
@@ -1145,37 +1155,36 @@ Function sortByWaveGroup(original,ds,value)
 				matched = -1	
 				count = 0
 				
-				For(m=0;m<numWaveSets;m+=1)
+				For(m=0;m<numWaveSets;m+=1,count+=numWaves)
 					//uses block of waves from each subsequent waveset
 					numWaves = str2num(StringFromList(m,wsDims,";"))
 					String theWaves = getWaveSet(dataSetName,wsn=m)
 					
-					For(j=0;j<ItemsInList(folders,";");j+=1)
-						String theFolder = StringFromList(j,folders,";")
-						
-						If(matched[j + count] != -1)
-							continue
-						EndIf
+					For(j=0;j<ItemsInList(folders,";");j+=1,wsn+=1)
+						String matchFolder = StringFromList(j,folders,";")
 						
 						//name = ParseFilePath(0,ds[j],":",1,0)
-						String folder = ParseFilePath(1,StringFromList(j,theWaves,";"),":",1,0) //folder of the wave
 						
 						For(k=0;k<numWaves;k+=1)
+							
+							
+							If(strlen(relFolder))
+								String waveFolder = ParseFilePath(0,StringFromList(k,theWaves,";"),":",1,2) //folder of the wave before subfolder
+							Else
+								waveFolder = ParseFilePath(0,StringFromList(k,theWaves,";"),":",1,1) //folder of the wave
+							EndIf
+							
+							waveFolder = RemoveEnding(waveFolder,":")
+							
 							If(matched[k + count] != -1)
 								continue
 							EndIf
-							//matchName = ParseFilePath(0,ds[k],":",1,0)
-							matchName = ParseFilePath(0,StringFromList(k,theWaves,";"),":",1,0)
-							matchTerm = StringFromList(item,matchName,"_")
-						
-							If(!cmpstr(term,matchTerm))
+							
+							If(!cmpstr(waveFolder,matchFolder))
 								matched[k + count] = wsn
 							EndIf	
-							
-						EndFor
-						wsn += 1
+						EndFor			
 					EndFor
-					count += numWaves
 				EndFor
 				
 				//Label first wave set, if there are more than 1

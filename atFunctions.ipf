@@ -5607,15 +5607,21 @@ Function duplicateRename()
 		EndFor
 		
 		//If no changes in name were made, make the name unique with extra 0,1,2... at the end
-		If(!cmpstr(name,newName))
+		If(!cmpstr(name,newName,1)) //case-sensitive
 			newName = UniqueName(newName,1,0)
 		EndIf
 		
-		Duplicate/O theWave,$newName
-		
 		If(killOriginals)
-			ReallyKillWaves(theWave)
+			Rename $name,$newName
+		Else
+			Duplicate/O theWave,$newName
 		EndIf
+		
+		//Duplicate/O theWave,$newName
+		
+//		If(killOriginals)
+//			ReallyKillWaves(theWave)
+//		EndIf
 	EndFor
 
 End

@@ -511,6 +511,68 @@ Function atListBoxProc(lba) : ListBoxControl
 						EndIf
 					EndIf
 					break
+				case "AT_ItemListBox":
+					Wave/T listWave = root:Packages:analysisTools:itemListTable
+					SVAR cdf = root:Packages:analysisTools:currentDataFolder
+					If(lba.eventMod == 17)
+						//recalls the selection used to make the data set originally
+						PopupContextualMenu/C=(lba.MouseLoc.h, lba.MouseLoc.v) "Browse Wave"
+						If(V_flag)
+							//Browse to the selected wave
+							ModifyBrowser clearSelection,selectList=selWaveList
+						EndIf
+						
+						For(i=0;i<DimSize(listWave,0);i+=1)
+							If(i > DimSize(selWave,0) - 1)
+								break
+							EndIf
+							If(selWave[i] == 1)
+								selWaveList = cdf + listWave[i] + ";"
+								break
+							EndIf
+						EndFor
+						
+						//Browse to the selected wave
+						ModifyBrowser clearSelection,selectList=selWaveList
+							
+					EndIf
+				case "extFuncDSListBox":					
+					Variable j
+					ControlInfo/W=analysis_tools extFuncDS
+					Wave/T theDataSet = $("root:Packages:analysisTools:DataSets:DS_" + S_Value)
+					dsName = S_Value
+					
+					If(lba.eventMod == 17)
+						//recalls the selection used to make the data set originally
+						PopupContextualMenu/C=(lba.MouseLoc.h, lba.MouseLoc.v) "Browse Wave"
+						If(V_flag)
+							//Browse to the selected wave
+							ModifyBrowser clearSelection,selectList=selWaveList
+						EndIf
+						
+						For(i=0;i<DimSize(theDataSet,0);i+=1)
+							If(i > DimSize(selWave,0) - 1)
+								break
+							EndIf
+							
+							If(selWave[i] == 1)
+								If(stringmatch(theDataSet[i],"*WSN*"))
+									String theWaveSet = getWaveSet(dsName,wsLabel=theDataSet[i])
+									For(j=0;j<ItemsInList(theWaveSet,";");j+=1)
+										selWaveList += StringFromList(j,theWaveSet,";") + ";"
+									EndFor
+								Else
+									selWaveList = theDataSet[i] + ";"
+								EndIf
+								break
+							EndIf
+						EndFor
+						
+						//Browse to the selected wave
+						ModifyBrowser clearSelection,selectList=selWaveList
+							
+					EndIf
+					break
 			endswitch
 		case 2: // mouse up
 			strswitch(lba.ctrlName)
@@ -951,7 +1013,7 @@ Function atPopProc(pa) : PopupMenuControl
 					//Refresh external function page when it opens
 					If(cmpstr(pa.popStr,"External Function") == 0)
 						Wave/Z/T dataSetNames = root:Packages:analysisTools:DataSets:dataSetNames
-						SVAR DSNames = root:Packages:analysisTools:DSNames
+						SVAR DSNames = root:Packages:analysisTools:DataSets:DSNames
 						DSNames = "--None--;--Scan List--;--Item List--;" + textWaveToStringList(dataSetNames,";")
 					
 						KillExtParams()
@@ -1002,7 +1064,7 @@ Function atPopProc(pa) : PopupMenuControl
 							case "Run Cmd Line":
 							case "Duplicate/Rename":
 								Wave/Z/T dataSetNames = root:Packages:analysisTools:DataSets:dataSetNames
-								SVAR DSNames = root:Packages:analysisTools:DSNames
+								SVAR DSNames = root:Packages:analysisTools:DataSets:DSNames
 								DSNames = "--None--;--Scan List--;--Item List--;" + textWaveToStringList(dataSetNames,";")		
 								break
 						endswitch
@@ -1093,6 +1155,14 @@ Function switchTabs(newTab)
 			
 			SetDrawLayer/W=analysis_tools ProgBack
 			updateWSDimText()
+			
+			//Reload the data set names
+			Wave/T dataSetNames = root:Packages:analysisTools:DataSets:dataSetNames
+			GetDataSetNames()
+			
+			SVAR DSNames = root:Packages:analysisTools:DataSets:DSNames
+			DSNames = "--None--;--Scan List--;--Item List--;" + textWaveToStringList(dataSetNames,";")
+			
 			break
 		case 1://Functions
 			DrawAction/W=analysis_tools delete
@@ -1112,6 +1182,14 @@ Function switchTabs(newTab)
 				EndIf
 			
 			EndIf
+			
+			//Reload the data set names
+			Wave/T dataSetNames = root:Packages:analysisTools:DataSets:dataSetNames
+			GetDataSetNames()
+			
+			SVAR DSNames = root:Packages:analysisTools:DataSets:dataSetNames
+			DSNames = "--None--;--Scan List--;--Item List--;" + textWaveToStringList(dataSetNames,";")
+			
 			break
 	endswitch
 End
@@ -1220,8 +1298,8 @@ Function atSetVarProc(sva) : SetVariableControl
 						Wave/T/Z unGrouped = root:Packages:analysisTools:DataSets:ogAT_WaveListTable_UnGroup
 						
 						//filter the waves
-						filterByGroup(ds)
-						filterByGroup(unGrouped)
+						filterByGroup(ds,bufferZero=1)
+						filterByGroup(unGrouped,bufferZero=1)
 								
 						//group the waves
 						setWaveGrouping(unGrouped,ds)
@@ -1244,7 +1322,7 @@ Function atSetVarProc(sva) : SetVariableControl
 						setWaveGrouping(original,ds)
 						
 						//filter the waves
-						filterByGroup(ds)
+						filterByGroup(ds,bufferZero=1)
 						
 						//make sure wave sets are all valid dimensions	
 						checkWaveSets(ds)

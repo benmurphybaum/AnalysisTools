@@ -1423,33 +1423,33 @@ Function/S getWaveNames([ignoreWaveGrouping,dataset,waveset])
 	//If data set is specified already
 	If(strlen(dataset))
 		If(ignoreWaveGrouping)
-				Wave/T ds = GetDataSetWave(dsName=dataset)
-				theWaveList = tableToList(ds,";")
-				//Remove the wave set divisions
-				String matches = ListMatch(theWaveList,"*WSN*",";")
-				theWaveList = RemoveFromList(matches,theWaveList)
-		
-			Else
-				Wave/T ds = GetDataSetWave(dsName=dataset)
-				If(waveset != -1)
-					wsn = waveset
-				EndIf
-				
-				Variable pos = tableMatch("*WSN " + num2str(wsn) + "*",ds) + 1//first wave of the waveset
-				If(pos == 0) //no wavesets defined, take all the waves at once
-					Variable endpos = DimSize(ds,0)
-				Else
-					endpos = pos + str2num(StringFromList(wsn,wsDims,";")) //Last wave of the waveset
-				EndIf
-				
-				If(numtype(endpos) == 2) //only wave of the waveset
-					endpos = pos + 1
-				EndIf
-				
-				For(i=pos;i<endpos;i+=1)
-					theWaveList += ds[i] + ";"
-				EndFor
+			Wave/T ds = GetDataSetWave(dsName=dataset)
+			theWaveList = tableToList(ds,";")
+			//Remove the wave set divisions
+			String matches = ListMatch(theWaveList,"*WSN*",";")
+			theWaveList = RemoveFromList(matches,theWaveList)
+	
+		Else
+			Wave/T ds = GetDataSetWave(dsName=dataset)
+			If(waveset != -1)
+				wsn = waveset
 			EndIf
+			
+			Variable pos = tableMatch("*WSN " + num2str(wsn) + "*",ds) + 1//first wave of the waveset
+			If(pos == 0) //no wavesets defined, take all the waves at once
+				Variable endpos = DimSize(ds,0)
+			Else
+				endpos = pos + str2num(StringFromList(wsn,wsDims,";")) //Last wave of the waveset
+			EndIf
+			
+			If(numtype(endpos) == 2) //only wave of the waveset
+				endpos = pos + 1
+			EndIf
+			
+			For(i=pos;i<endpos;i+=1)
+				theWaveList += ds[i] + ";"
+			EndFor
+		EndIf
 		return theWaveList
 	EndIf
 	

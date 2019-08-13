@@ -600,7 +600,7 @@ Function LoadAnalysisSuite([left,top])
 	SVAR DSNames = root:Packages:analysisTools:DataSets:DSNames
 	DSNames = "--None--;--Scan List--;--Item List--;" + textWaveToStringList(dataSetNames,";")
 	
-	PopUpMenu extFuncDS win=analysis_tools,pos={21,100},size={150,20},title="Waves",fSize=12,disable=1,value=#"root:Packages:analysisTools:DSNames",proc=atPopProc
+	PopUpMenu extFuncDS win=analysis_tools,pos={21,100},size={150,20},title="Waves",fSize=12,disable=1,value=#"root:Packages:analysisTools:DataSets:DSNames",proc=atPopProc
 	PopUpMenu extFuncChannelPop win=analysis_tools,pos={180,100},size={100,20},fsize=12,title="CH",value="1;2",disable=1
 	Button extFuncHelp win=analysis_tools,pos={2,66},size={15,20},title="?",disable=1,proc=atButtonProc
 	
@@ -1378,6 +1378,7 @@ Function ChangeControls(currentCmd,prevCmd)
 		case "PSTH":
 		case "Set Wave Note":
 		case "Kill Waves":
+		case "Clean Desk":
 		case "Run Cmd Line":
 			PopUpMenu extFuncDS win=analysis_tools,pos={21,100}
 			PopUpMenu extFuncChannelPop win=analysis_tools,pos={180,100},disable=1
