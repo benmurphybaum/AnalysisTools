@@ -1318,11 +1318,16 @@ Function atSetVarProc(sva) : SetVariableControl
 						//original ungrouped list
 						Wave/T/Z original = $("root:Packages:analysisTools:DataSets:ogDS_" + dataSetName)
 						
-						//group the waves
-						setWaveGrouping(original,ds)
+						Duplicate/O original,root:Packages:analysisTools:DataSets:ogAT_WaveListTable_UnGroup
+						Wave/T/Z unGrouped = root:Packages:analysisTools:DataSets:ogAT_WaveListTable_UnGroup
+						
 						
 						//filter the waves
 						filterByGroup(ds,bufferZero=1)
+						filterByGroup(unGrouped,bufferZero=1)
+						
+						//group the waves
+						setWaveGrouping(unGrouped,ds)
 						
 						//make sure wave sets are all valid dimensions	
 						checkWaveSets(ds)
