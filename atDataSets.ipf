@@ -1314,6 +1314,11 @@ Function sortByWaveGroup(original,ds,value)
 					count+=1
 				EndFor
 				
+				For(j=DimSize(tempDS,0)-1;j>-1;j-=1) //backwards
+					If(strlen(tempDS[j]) == 0)
+						DeletePoints j,1,tempDS
+					EndIf
+				EndFor
 				Redimension/N=(DimSize(tempDS,0)) ds
 				ds = tempDS
 		endswitch
@@ -1347,8 +1352,10 @@ Function filterByWaveSetIndex(ds,value)
 		
 		count = waveSetSize - 1
 		
+		endPt = tableMatch("*WSN*" + num2str(j) + "*",ds) + 1
+		
 		//start and end indices of each waveset, start is high, end is low.
-		endPt = totalSize - (numWaveSets - j)*waveSetSize -  (numWaveSets - (j + 1)) * offset //offset is only used when there is more than 1 waveset
+		//endPt = totalSize - (numWaveSets - j)*waveSetSize -  (numWaveSets - (j + 1)) * offset //offset is only used when there is more than 1 waveset
 		startPt = endPt + waveSetSize - 1
 		
 		For(i=startPt;i>endPt-1;i-=1) //go backwards

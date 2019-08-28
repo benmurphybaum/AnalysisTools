@@ -3463,6 +3463,7 @@ Function ResolveFunctionParameters(theFunction)
 	
 	//Function has no extra parameters declared
 	If(numParams == 0)
+		numExtParams = 0
 		KillExtParams()
 		return -1
 	EndIf
@@ -3970,14 +3971,9 @@ Function/S resolveCmdLine(cmdLineStr,wsn,wsi)
 				pos4 = -1
 			EndIf
 			
+			//Get the referenced data set
 			dsName = cmdLineStr[pos1+1,pos2-1]
-			
-			//Check if dataset name is referencing the wave set index
-		//	If(!cmpstr(dsName,"wsi"))
-				
-		//	Else
-				Wave/T/Z ds = GetDataSetWave(dsName=dsName)
-		//	EndIf
+			Wave/T/Z ds = GetDataSetWave(dsName=dsName)
 				
 			If(pos3 != -1 && pos2 != -1)
 				//set pos2 to after the waveset specifier for proper string trimming
@@ -4209,4 +4205,39 @@ Function dROI_Hook(s)
 			SetScale/P x,DimOffset(theImage,2),DimDelta(theImage,2),dROI
 			break
 	endswitch
+End
+
+//gets the center of mass of the wave, 1D waves only.
+Function CofM(theWave[,startX,endX])
+	Wave theWave
+	Variable startX,endX
+	Variable i,mass,com,size
+
+	If(!WaveExists(theWave))
+		return -1
+	EndIf
+	
+	mass = 0
+	com = 0
+	size = DimSize(theWave,0)
+	
+	If(ParamIsDefault(startX))
+		startX = 0
+	Else
+		startX = ScaleToIndex(theWave,startX,0)
+	EndIf
+	
+	If(ParamIsDefault(endX))
+		endX = size-1
+	Else
+		endX = ScaleToIndex(theWave,endX,0)
+	EndIf
+
+	For(i=startX;i<=endX;i+=1)
+		com += theWave[i] * IndexToScale(theWave,i,0)
+		mass += theWave[i]
+	EndFor
+	com /= mass
+	
+	return com
 End

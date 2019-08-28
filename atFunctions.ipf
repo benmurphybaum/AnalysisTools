@@ -5267,8 +5267,20 @@ Function AverageWaves()
 	SetDataFolder cdf
 	
 	//Make output wave
+	ControlInfo/W=analysis_tools outputSuffixAvg
+	String suffix = S_Value
+	
 	Wave theWave = $StringFromList(0,theWaveList,";")
-	String outWaveName = outFolder + ":" + NameOfWave(theWave) + "_avg"
+	If(strlen(suffix))
+		String outWaveName = outFolder + ":" + NameOfWave(theWave) + "_" + suffix
+	Else
+		outWaveName = outFolder + ":" + NameOfWave(theWave)
+		
+		//ensure you're not overwriting the first wave in the datat set
+		If(!cmpstr(StringFromList(0,theWaveList,";"),outWaveName))
+			outWaveName = outFolder + ":" + NameOfWave(theWave) + "_avg"
+		EndIf
+	EndIf
 	
 	Variable dims = WaveDims(theWave)
 	
@@ -5340,9 +5352,21 @@ Function ErrorWaves()
 	SetDataFolder cdf
 	
 	//Make output wave
+	ControlInfo/W=analysis_tools outputSuffixErr
+	String suffix = S_Value
+	
 	Wave theWave = $StringFromList(0,theWaveList,";")
 	
-	String outWaveName = outFolder + ":" + NameOfWave(theWave) + "_" + error
+	If(strlen(suffix))
+		String outWaveName = outFolder + ":" + NameOfWave(theWave) + "_" + suffix
+	Else
+		outWaveName = outFolder + ":" + NameOfWave(theWave)
+		
+		//ensure you're not overwriting the first wave in the datat set
+		If(!cmpstr(StringFromList(0,theWaveList,";"),outWaveName))
+			outWaveName = outFolder + ":" + NameOfWave(theWave) + "_" + error
+		EndIf
+	EndIf
 	
 	Variable dims = WaveDims(theWave)
 	

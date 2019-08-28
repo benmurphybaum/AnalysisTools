@@ -65,18 +65,12 @@ Function atButtonProc(ba) : ButtonControl
 								EndIf
 							While(pos1 != -1)
 							
-							//Test whether they have the same number of waveset dimensions
-							String dims = GetWaveSetDims(StringFromList(0,dsRefList,";"))
-							Make/FREE/N=(ItemsInList(dsRefList,";")) wsDimSize //holds number of waves in each waveset
-							wsDimSize[0] = str2num(dims)
-							
 							If(ItemsInList(dsRefList,";") > 0)	//if there are data set references, otherwise continue
+								Make/FREE/N=(ItemsInList(dsRefList,";")) wsDimSize //holds number of waves in each waveset
+								
 								For(i=1;i<ItemsInList(dsRefList,";");i+=1)
 									String testDims = GetWaveSetDims(StringFromList(i,dsRefList,";"))
 									wsDimSize[i] = str2num(testDims)
-									If(cmpstr(testDims,dims))
-									//	Abort "Data sets must have the same dimensions"
-									EndIf
 								EndFor		
 								
 								dsName = StringFromList(0,dsRefList,";") //name of first data set found		
@@ -86,6 +80,16 @@ Function atButtonProc(ba) : ButtonControl
 							EndIf
 							
 							For(i=0;i<numWaveSets;i+=1)
+								
+								//update the size of the wavesets for each wsn
+								Variable k
+								For(k=0;k<ItemsInList(dsRefList,";");k+=1)
+									testDims = GetWaveSetDims(StringFromList(k,dsRefList,";"))
+									wsDimSize[k] = str2num(StringFromList(i,testDims,";"))
+								EndFor
+								
+							
+								
 								If(strlen(dsName))
 									String theWaveSet = GetWaveSet(dsName,wsn=i)
 									//numWaves = ItemsInList(theWaveSet,";")
@@ -100,12 +104,18 @@ Function atButtonProc(ba) : ButtonControl
 									
 									//check if there is an output wave assignment, if so does it exist?
 									String left,outWaveName,folder,firstWave
-									Variable pos
+									Variable pos,semicolonPos
 									
 									left = ""
 									If(stringmatch(runCmdStr,"*=*"))
 									   left = StringFromList(0,runCmdStr,"=")
+									   //if the wave assignment is not the first command, there may be problems with other escape codes. Remove these first
+									   Do
+										   left = StringFromlist(ItemsInList(left,";")-1,left,";")
+										   semicolonPos = strsearch(left,";",0)
+										While(semicolonPos != -1)
 									EndIf
+									
 									
 									If(strlen(left) && !stringmatch(left,"*/*")) //makes sure that the equals sign is truly for a wave assignment, as opposed to a flag assignment
 										pos = strsearch(left,"[",0)
@@ -129,7 +139,11 @@ Function atButtonProc(ba) : ButtonControl
 										EndIf
 										
 										If(strlen(outWaveName) && !WaveExists($outWaveName))
+											//doesn't exist, make it with correct dimensions
 											Make/O/N=(numWaves) $outWaveName
+										ElseIf(strlen(outWaveName) && WaveExists($outWaveName))
+											//already exists, correct any incorrect dimensions
+											Redimension/N=(numWaves) $outWaveName
 										EndIf 
 
 									EndIf
@@ -1152,8 +1166,11 @@ Function switchTabs(newTab)
 			
 			SetDrawEnv/W=analysis_tools arrow= 1,arrowlen= 5.00
 			DrawLine/W=analysis_tools 220,471,230,471
+			SetDrawEnv/W=analysis_tools fsize=9
+			DrawText/W=analysis_tools 80,464,"DS Name"
 			
 			SetDrawLayer/W=analysis_tools ProgBack
+			
 			updateWSDimText()
 			
 			//Reload the data set names
@@ -1820,14 +1837,21 @@ Function atClickHook(s)
 		case 1:
 		//handle deactivate
 			break
+		case 3:
+		//mouse down
+			Wave/T dsNames = root:Packages:analysisTools:DataSets:dataSetNames
+			String names = textWaveToStringList(dsNames,";")
+			
+			GetMouse/W=analysis_tools
+			If(V_left > 78 && V_left < 124 && V_top > 450 && V_top < 467)
+				PopupContextualMenu/C=(s.MouseLoc.h, s.MouseLoc.v) names
+				If(V_flag)
+					SetVariable dataSetName win=analysis_tools,value=_STR:S_selection
+				EndIf
+			EndIf
+			break
 		case 5:
 		//mouse up
-			GetMouse/W=analysis_tools
-			If(V_left > 5 && V_left < 230 && V_top > 120 && V_top < 440)
-				print "matchBox"
-			Else
-				print "outside"
-			EndIf
 			break
 	endswitch
 	

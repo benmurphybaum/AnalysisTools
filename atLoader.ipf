@@ -227,12 +227,6 @@ Function LoadAnalysisSuite([left,top])
 	SVAR waveNotMatchStr = root:Packages:analysisTools:waveNotMatchStr
 	waveNotMatchStr = ""
 	
-	String/G root:Packages:analysisTools:opList
-	SVAR opList = root:Packages:analysisTools:opList
-	opList = "Cmd Line;avg;sem;sum;delete;edit;display;differentiate"
-	
-	
-	
 	Make/O/N=1 root:Packages:analysisTools:AT_selWave
 	Wave AT_selWave = root:Packages:analysisTools:AT_selWave
 	AT_selWave = 0
@@ -446,9 +440,11 @@ Function LoadAnalysisSuite([left,top])
 	
 	//Average
 	SetVariable outFolder win=analysis_tools,pos={20,63},size={175,20},title="Output Folder:",value=_STR:"",disable=1
-	
+	SetVariable outputSuffixAvg win=analysis_tools,pos={23,83},size={150,20},title="Output Suffix:",value=_STR:"",disable=1
+
 	//Errors
 	PopUpMenu errType win=analysis_tools,pos={20,120},size={50,20},title="Type",value="sem;sdev",disable=1
+	SetVariable outputSuffixErr win=analysis_tools,pos={23,83},size={150,20},title="Output Suffix:",value=_STR:"",disable=1
 	
 	//PSTH
 	PopUpMenu histType win=analysis_tools,pos={20,130},size={90,20},title="Type",value="Binned;Gaussian",disable=1
@@ -518,8 +514,8 @@ Function LoadAnalysisSuite([left,top])
 	
 	//For Dynamic ROI
 	SetVariable dynamicROI_size win=analysis_tools,pos={12,65},size={80,50},title="Diameter",value=_NUM:6,disable=1
-	//For Operation
-	
+
+	//For wave matching
 	SetVariable waveMatch win=analysis_tools,pos={40,40},size={162,20},fsize=10,title="Match",value=_STR:"*",help={"Matches waves in the selected folder.\rLogical 'OR' can be used via '||'"},disable=1,proc=atSetVarProc
 	SetVariable waveNotMatch win=analysis_tools,pos={52,60},size={150,20},fsize=10,title="Not",value=_STR:"",help={"Excludes matched waves in the selected folder.\rLogical 'OR' can be used via '||'"},disable=1,proc=atSetVarProc
 	String helpNote = "Target subfolder for wave matching.\r Useful if matching in multiple parent folders that each have a common subfolder structure"
@@ -527,10 +523,6 @@ Function LoadAnalysisSuite([left,top])
 	getWaveMatchList()
 	
 	ListBox matchListBox win=analysis_tools,pos={5,120},size={225,320},mode=4,listWave=AT_waveListTable,selWave=AT_selWave,disable=1,proc=atListBoxProc
-	SetVariable operation win=analysis_tools,pos={80,469},size={255,20},title="Operation",value=_STR:"",disable=1
-	SetVariable outputSuffix win=analysis_tools,pos={80,450},size={150,20},title="Output Suffix",value=_STR:"",disable=1
-	PopUpMenu operationOptionsPop win=analysis_tools,pos={233,447},size={100,20},bodywidth=100,title="",value=#"root:Packages:analysisTools:opList",disable=1,proc=atPopProc
-	CheckBox useDataSetCheck win=analysis_tools,pos={238,102},title="",disable=1
 	
 	//For Line Profile
 	SetVariable lineProfileWidth win=analysis_tools,pos={242,62},size={75,20},title="Width",value=_NUM:5,disable=1
@@ -562,7 +554,10 @@ Function LoadAnalysisSuite([left,top])
 	Button addDataSet win=analysis_tools,pos={234,440},size={100,20},title="Add/Update",disable=1,help={"Adds a new data set.\rUpdates it if it already exists"},proc=atButtonProc
 	Button addDataSetFromSelection win=analysis_tools,pos={234,460},size={100,20},title="From Selection",help={"Adds a new data set from the wave list in Browse mode"},disable=1,proc=atButtonProc
 	Button delDataSet win=analysis_tools,pos={234,480},size={100,20},title="Delete",help={"Delete the data set"},disable=1,proc=atButtonProc
-	SetVariable dataSetName win=analysis_tools,pos={80,451},size={130,20},title="DS Name",disable=1,value=_STR:"NewDS"
+	SetVariable dataSetName win=analysis_tools,pos={124,451},size={85,20},title="",disable=1,value=_STR:"NewDS"
+	SetDrawEnv/W=analysis_tools fsize=9
+	DrawText/W=analysis_tools 80,464,"DS Name"
+	
 	Button matchStraddOR win=analysis_tools,pos={202,38},size={22,20},title="OR",fsize=8,disable=1,proc=atButtonProc
 	Button notMatchStraddOR win=analysis_tools,pos={202,58},size={22,20},title="OR",fsize=8,disable=1,proc=atButtonProc
 	helpNote = "Organize the wave list into wave sets by the indicated underscore position.\rUses zero offset; -2 concatenates into a single wave set"
@@ -687,6 +682,9 @@ Function LoadAnalysisSuite([left,top])
 	DoWindow/F analysis_tools
 	cdf = GetDataFolder(1)
 	
+	//set window hook for detecting right clicks on the data set label
+	SetWindow analysis_tools hook(dsHook)=atClickHook,hookEvents=1
+	
 	//any default settings for system personalization can be changed here
 	SetDefaults()
 End
@@ -730,12 +728,12 @@ Function CreateControlLists(cmdList)
 	//Average
 	String/G root:Packages:analysisTools:ctrlList_average
 	SVAR ctrlList_average = root:Packages:analysisTools:ctrlList_average
-	ctrlList_average = "extFuncDS;extFuncChannelPop;extFuncDSListBox;outFolder"
+	ctrlList_average = "extFuncDS;extFuncChannelPop;extFuncDSListBox;outFolder;outputSuffixAvg;"
 	
 	//Error
 	String/G root:Packages:analysisTools:ctrlList_error
 	SVAR ctrlList_error = root:Packages:analysisTools:ctrlList_error
-	ctrlList_error = "extFuncDS;extFuncChannelPop;extFuncDSListBox;errType;outFolder"
+	ctrlList_error = "extFuncDS;extFuncChannelPop;extFuncDSListBox;errType;outFolder;outputSuffixErr;"
 	
 	//PSTH
 	String/G root:Packages:analysisTools:ctrlList_psth
@@ -807,11 +805,6 @@ Function CreateControlLists(cmdList)
 	SVAR ctrlList_dynamicROI = root:Packages:analysisTools:ctrlList_dynamicROI
 	ctrlList_dynamicROI = "extFuncDS;extFuncChannelPop;extFuncDSListBox;dynamicROI_size"
 	
-	//Operation
-	String/G root:Packages:analysisTools:ctrlList_operation
-	SVAR ctrlList_operation = root:Packages:analysisTools:ctrlList_operation
-	ctrlList_operation = "waveMatch;waveNotMatch;matchListBox;operation;outputSuffix;operationOptionsPop;dataSetListBox;useDataSetCheck;matchStraddOR;notMatchStraddOR"
-	
 	//Get Peaks
 	String/G root:Packages:analysisTools:ctrlList_getPeaks
 	SVAR ctrlList_getPeaks = root:Packages:analysisTools:ctrlList_getPeaks
@@ -849,11 +842,6 @@ Function CreateControlLists(cmdList)
 	ctrlList_dataSets = "waveMatch;waveNotMatch;relativeFolderMatch;matchListBox;dataSetListBox;addDataSet;dataSetName;delDataSet;"
 	ctrlList_dataSets += "waveGrouping;addDataSetFromSelection;matchStraddOR;notMatchStraddOR;"
 	ctrlList_dataSets += "prefixGroup;GroupGroup;SeriesGroup;SweepGroup;TraceGroup"
-	
-	//Get Peak Times
-	String/G root:Packages:analysisTools:ctrlList_getPeakTimes
-	SVAR ctrlList_getPeakTimes = root:Packages:analysisTools:ctrlList_getPeakTimes
-	ctrlList_getPeakTimes = "peakStVar;peakEndVar;dataSetListBox;useDataSetCheck" 
 	
 	//ROI Grid
 	String/G root:Packages:analysisTools:ctrlList_roiGrid
@@ -1358,7 +1346,10 @@ Function ChangeControls(currentCmd,prevCmd)
 			SetDrawEnv/W=analysis_tools arrow= 1,arrowlen= 5.00
 			DrawLine/W=analysis_tools 220,471,230,471
 			
+			SetDrawEnv/W=analysis_tools fsize=9
+			DrawText/W=analysis_tools 80,464,"DS Name"
 			SetDrawLayer/W=analysis_tools ProgBack
+			
 			break
 		case "Operation":
 			SetDrawLayer/W=analysis_tools UserBack
