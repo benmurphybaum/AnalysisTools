@@ -1563,7 +1563,7 @@ for (ROIList = 0; ROIList < numpnts(ROIListWave); ROIList+=1)
 		ImageStats/R=M_ROIMask Matrix
 
 		darkValue = V_avg
-		print darkValue
+		
 		run+=1
 	else
 	endif
@@ -2124,7 +2124,6 @@ Function displayROIs()
 			EndIf
 			
 			If(cmpstr(horArrange,"Index") == 0)
-				print pnt2x(scanOrderIndex,j)
 				Scan = StringFromList(scanOrderIndex[j],scanListStr,";")
 			ElseIf(cmpstr(vertArrange,"Index") == 0)
 				Scan = StringFromList(scanOrderIndex[i],scanListStr,";")
