@@ -453,11 +453,11 @@ Function LoadAnalysisSuite([left,top])
 	
 	
 	//Duplicate/Rename
-	SetVariable prefixName win=analysis_tools,pos={20,60},size={50,20},title="P",value=_STR:"",disable=1
-	SetVariable groupName win=analysis_tools,pos={80,60},size={50,20},title="G",value=_STR:"",disable=1
-	SetVariable seriesName win=analysis_tools,pos={140,60},size={50,20},title="Se",value=_STR:"",disable=1
-	SetVariable sweepName win=analysis_tools,pos={200,60},size={50,20},title="Sw",value=_STR:"",disable=1
-	SetVariable traceName win=analysis_tools,pos={260,60},size={50,20},title="T",value=_STR:"",disable=1
+	SetVariable prefixName win=analysis_tools,pos={20,60},size={40,20},title="",value=_STR:"",disable=1
+	SetVariable groupName win=analysis_tools,pos={65,60},size={55,20},title=" __",value=_STR:"",disable=1
+	SetVariable seriesName win=analysis_tools,pos={125,60},size={55,20},title=" __",value=_STR:"",disable=1
+	SetVariable sweepName win=analysis_tools,pos={180,60},size={55,20},title=" __",value=_STR:"",disable=1
+	SetVariable traceName win=analysis_tools,pos={235,60},size={55,20},title=" __",value=_STR:"",disable=1
 	Checkbox killOriginals win=analysis_tools,pos={20,80},size={100,20},title="Kill Originals",value=0,disable=1
 	
 	//Set Wave Note
@@ -563,11 +563,11 @@ Function LoadAnalysisSuite([left,top])
 	helpNote = "Organize the wave list into wave sets by the indicated underscore position.\rUses zero offset; -2 concatenates into a single wave set"
 	SetVariable waveGrouping win=analysis_tools,pos={80,471},size={130,20},title="Grouping",disable=1,value=_STR:"",help={helpNote},proc=atSetVarProc
 	
-	SetVariable prefixGroup win=analysis_tools,pos={10,491},size={40,20},title="P",disable=1,value=_STR:"",help={"Filter the wave list by the 1st underscore position"},proc=atSetVarProc
-	SetVariable groupGroup win=analysis_tools,pos={50,491},size={40,20},title="G",disable=1,value=_STR:"",help={"Filter the wave list by the 2nd underscore position"},proc=atSetVarProc
-	SetVariable seriesGroup win=analysis_tools,pos={90,491},size={40,20},title="Se",disable=1,value=_STR:"",help={"Filter the wave list by the 3rd underscore position"},proc=atSetVarProc
-	SetVariable sweepGroup win=analysis_tools,pos={130,491},size={40,20},title="Sw",disable=1,value=_STR:"",help={"Filter the wave list by the 4th underscore position"},proc=atSetVarProc
-	SetVariable traceGroup win=analysis_tools,pos={170,491},size={40,20},title="T",disable=1,value=_STR:"",help={"Filter the wave list by the 5th underscore position"},proc=atSetVarProc
+	SetVariable prefixGroup win=analysis_tools,pos={10,491},size={30,20},title="",disable=1,value=_STR:"",help={"Filter the wave list by the 1st underscore position"},proc=atSetVarProc
+	SetVariable groupGroup win=analysis_tools,pos={40,491},size={45,20},title=" __",disable=1,value=_STR:"",help={"Filter the wave list by the 2nd underscore position"},proc=atSetVarProc
+	SetVariable seriesGroup win=analysis_tools,pos={85,491},size={45,20},title=" __",disable=1,value=_STR:"",help={"Filter the wave list by the 3rd underscore position"},proc=atSetVarProc
+	SetVariable sweepGroup win=analysis_tools,pos={130,491},size={45,20},title=" __",disable=1,value=_STR:"",help={"Filter the wave list by the 4th underscore position"},proc=atSetVarProc
+	SetVariable traceGroup win=analysis_tools,pos={175,491},size={45,20},title=" __",disable=1,value=_STR:"",help={"Filter the wave list by the 5th underscore position"},proc=atSetVarProc
 	
 	//For Rescale Scans
 	SetVariable scaleFactor win=analysis_tools,pos={125,62},size={125,20},bodywidth=40,title="Scale Factor (µm/volt)",disable=1,value=_NUM:60
