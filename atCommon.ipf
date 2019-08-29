@@ -4241,3 +4241,21 @@ Function CofM(theWave[,startX,endX])
 	
 	return com
 End
+
+//Writes out the different syntax that you need to use with the command line.
+Function drawSyntaxInfo()
+	SetDrawLayer/W=analysis_tools UserBack
+	
+	String text = "\\f04Syntax"
+	DrawText/W=analysis_tools 20,155,text
+	
+	SetDrawEnv textrgb= (34952,34952,34952)
+	text = "Data Set: <myDataSet>\n\nReference WSI: <wsi>\n\nReference WSN: <wsn>"
+	text += "\n\nSpecific WSN/WSI: <myDataSet>{wsn,wsi}"
+	DrawText/W=analysis_tools 20,260,text
+	SetDrawEnv textrgb= (34952,34952,34952)
+	text = "Specific WSI for all WSN: <myDataSet>{*,wsi}"
+	DrawText/W=analysis_tools 20,290,text
+	
+	SetDrawEnv textrgb= (0,0,0)
+End

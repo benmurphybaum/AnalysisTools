@@ -1376,6 +1376,10 @@ Function ChangeControls(currentCmd,prevCmd)
 			ListBox extFuncDSListBox win=analysis_tools,pos={180,121},disable=1
 			ControlInfo/W=analysis_tools extFuncDS
 			SetExtFuncMenus(S_Value)
+			
+			If(!cmpstr(currentCmd,"Run Cmd Line"))
+				drawSyntaxInfo()
+			EndIf
 			break
 		case "Denoise":
 			PopUpMenu extFuncDS win=analysis_tools,pos={21,120}

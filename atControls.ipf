@@ -290,12 +290,18 @@ Function atButtonProc(ba) : ButtonControl
 					applyLineProfile()
 					break
 				case "AT_Help":
-					//ControlInfo/W=analysis_tools AT_CommandPop
-					//AT_DisplayHelpMessage(S_Value)
 					ControlInfo/W=analysis_tools AT_CommandPop
-					If(!cmpstr(S_Value,"Data Sets"))
-						DisplayHelpTopic "Data Sets"
-					EndIf
+					strswitch(S_Value)
+						case "External Function":
+							DisplayHelpTopic "External Functions"
+							break
+						case "Run Cmd Line":
+							DisplayHelpTopic "Run Cmd Line"
+							break
+						default:
+							DisplayHelpTopic "Data Sets"
+							break
+					endswitch
 					break
 				case "extFuncHelp":
 					ControlInfo/W=analysis_tools extFuncPopUp
@@ -1107,6 +1113,11 @@ Function atPopProc(pa) : PopupMenuControl
 					SetExtFuncMenus(pa.popStr)
 					SVAR wsDims = root:Packages:analysisTools:DataSets:wsDims
 					wsDims = GetWaveSetDims(pa.popStr)
+					
+					ControlInfo/W=analysis_tools AT_CommandPop
+					If(!cmpstr(S_Value,"Run Cmd Line"))
+						drawSyntaxInfo()
+					EndIf
 					break
 			endswitch
 			break
