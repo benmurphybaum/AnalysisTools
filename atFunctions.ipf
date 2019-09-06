@@ -2265,8 +2265,9 @@ Function/WAVE getDendriticMaskInit([theWave,noBuffer,channel])
 	paramStr += "maskThresh:" + num2str(V_Value) + ";"
 	//maskThresh = V_Value
 	
-	ControlInfo/W=analysis_tools AT_CommandPop
-	paramStr += "theCommand:" + S_Value + ";"
+	//ControlInfo/W=analysis_tools AT_CommandPop
+	SVAR currentCmd = root:Packages:analysisTools:currentCmd
+	paramStr += "theCommand:" + currentCmd + ";"
 	
 	paramStr += "theWave:" + GetWavesDataFolder(theWave,2) + ";"
 	
@@ -2480,8 +2481,10 @@ Function/WAVE getDendriticMask([theWave,noBuffer])
 				SetScale/P y,DimOffset(theWave,1),DimDelta(theWave,1),theMask
 			EndIf
 	
-			ControlInfo/W=analysis_tools AT_CommandPop
-			If(cmpstr(S_Value,"Get Dendritic Mask") == 0)
+			//ControlInfo/W=analysis_tools AT_CommandPop
+			SVAR currentCmd = root:Packages:analysisTools:currentCmd
+			
+			If(cmpstr(currentCmd,"Get Dendritic Mask") == 0)
 				print "Created dendritic mask of wave: " + scanPath
 			EndIf
 			

@@ -25,6 +25,51 @@ Function/S getExternalFunctions(fileList)
 	return theList
 End
 
+Function CheckExternalFunctionControls(currentCmd)
+	String currentCmd
+	
+	Wave/Z/T dataSetNames = root:Packages:analysisTools:DataSets:dataSetNames
+	SVAR DSNames = root:Packages:analysisTools:DataSets:DSNames
+	DSNames = "--None--;--Scan List--;--Item List--;" + textWaveToStringList(dataSetNames,";")
+
+	KillExtParams()
+	ControlInfo/W=analysis_tools extFuncPopUp
+	ResolveFunctionParameters("AT_" + S_Value)
+	recallExtFuncValues(S_Value)
+	//Toggle the channel pop up menu
+	ControlInfo/W=analysis_tools extFuncDS
+	If(cmpstr(S_Value,"--Scan List--") == 0)
+		//Scan list selection
+		If(cmpstr(currentCmd,"Get Peaks") == 0)
+			PopUpMenu extFuncChannelPop win=analysis_tools,fsize=12,title="CH",value="1;2",disable=0
+		Else
+			PopUpMenu extFuncChannelPop win=analysis_tools,fsize=12,title="CH",value="1;2",disable=0
+		EndIf
+		ListBox extFuncDSListBox win=analysis_tools,disable=1
+		DrawAction/W=analysis_tools delete
+	ElseIf(cmpstr(S_Value,"--None--") == 0 || cmpstr(S_Value,"--Item List--") == 0)
+		//Item List selection or no wave selection
+		If(cmpstr(currentCmd,"Get Peaks") == 0)
+			PopUpMenu extFuncChannelPop win=analysis_tools,fsize=12,title="CH",value="1;2",disable=1
+		Else
+			PopUpMenu extFuncChannelPop win=analysis_tools,fsize=12,title="CH",value="1;2",disable=1
+		EndIf
+		ListBox extFuncDSListBox win=analysis_tools,disable=1
+		DrawAction/W=analysis_tools delete
+	Else
+		//Data set selection
+		If(cmpstr(currentCmd,"Get Peaks") == 0)
+			PopUpMenu extFuncChannelPop win=analysis_tools,fsize=12,title="CH",value="1;2",disable=1
+		Else
+			PopUpMenu extFuncChannelPop win=analysis_tools,fsize=12,title="CH",value="1;2",disable=1
+		EndIf
+		
+		SetDrawEnv/W=analysis_tools fsize=12,xcoord=abs,ycoord=abs
+		DrawText/W=analysis_tools 230,117,"Waves:"
+		OpenExtFuncWaveListBox(S_Value)
+	EndIf
+End
+
 //Returns the items in the index range from a string list
 Function/S getListRange(index,list,separator)
 	String index,list,separator
@@ -113,8 +158,7 @@ End
 
 Function SetExtFuncMenus(selection)
 	String selection
-	ControlInfo/W=analysis_tools AT_CommandPop
-	String currentCmd = S_Value
+	SVAR currentCmd = root:Packages:analysisTools:currentCmd
 	
 	If(cmpstr(selection,"--Scan List--") == 0)
 		If(cmpstr(currentCmd,"Get Peaks") == 0)
@@ -173,58 +217,68 @@ End
 
 
 //Loads a function package
-Function LoadPackage(thePackage)
-	String thePackage
-	SVAR cmdList = root:Packages:analysisTools:cmdList
-	SVAR saveCurrentCmd = root:Packages:analysisTools:currentCmd
-	Variable numPackages,i,index,load
-	Wave/T packageTable = root:Packages:analysisTools:packageTable
-	
-	numPackages = DimSize(packageTable,0)
-	//Finds which package
-	For(i=0;i<numPackages;i+=1)
-		If(cmpstr(packageTable[i][0],thePackage) == 0)
-			index = i
-			load = 1
-			break
-		ElseIf(cmpstr("Unload " + packageTable[i][0],thePackage) == 0)
-			index = i
-			load = 0
-			break
-		EndIf
-	EndFor
-	
-	If(load)
-		cmdList = ReplaceString(thePackage,cmdList,"Unload " + thePackage)
-		cmdList += ";" + packageTable[index][1]
-		String firstControl = StringFromList(1,packageTable[index][1],";")
-		
-		ChangeControls(firstControl,"")
-		PopUpMenu AT_CommandPop win=analysis_tools,mode=WhichListItem(firstControl,cmdList)+1
-		saveCurrentCmd = firstControl
-	Else
-		String unload = ReplaceString("Unload ",thePackage,"")
-		cmdList = ReplaceString(thePackage,cmdList,unload)
-		cmdList = ReplaceString(packageTable[index][1],cmdList,"")
-		ChangeControls("External Function","")
-		PopUpMenu AT_CommandPop win=analysis_tools,mode=WhichListItem("External Function",cmdList)+1
-		saveCurrentCmd = "External Function"
-		//refresh the values in the external parameter variables
-
-		ControlInfo/W=analysis_tools extFuncPopUp
-		ResolveFunctionParameters("AT_" + S_Value)
-		recallExtFuncValues(S_Value)
-		
-		ControlInfo/W=analysis_tools extFuncDS
-		SetExtFuncMenus(S_Value)
-	EndIf
-End
+//Function LoadPackage(thePackage)
+//	String thePackage
+//	SVAR cmdList = root:Packages:analysisTools:cmdList
+//	SVAR saveCurrentCmd = root:Packages:analysisTools:currentCmd
+//	Variable numPackages,i,index,load
+//	Wave/T packageTable = root:Packages:analysisTools:packageTable
+//	
+//	numPackages = DimSize(packageTable,0)
+//	//Finds which package
+//	thePackage = RemoveEnding(thePackage,"...")
+//	
+//	//Get package contents
+//	For(i=0;i<numPackages;i+=1)
+//		If(cmpstr(packageTable[i][0],thePackage) == 0)
+//			index = i
+//			load = 1
+//			break
+//		ElseIf(cmpstr("Unload " + packageTable[i][0],thePackage) == 0)
+//			index = i
+//			load = 0
+//			break
+//		EndIf
+//	EndFor
+//	
+////	String packageContents = packageTable[index][1]
+////	//display package contextual pop up menu
+////	GetMouse/W=analysis_tools
+////	PopupContextualMenu/C=(16,36) packageContents
+//	
+//	
+//	If(load)
+//		cmdList = ReplaceString(thePackage,cmdList,"Unload " + thePackage)
+//		cmdList += ";" + packageTable[index][1]
+//		String firstControl = StringFromList(1,packageTable[index][1],";")
+//		
+//		ChangeControls(firstControl,"")
+//		PopUpMenu AT_CommandPop win=analysis_tools,mode=WhichListItem(firstControl,cmdList)+1
+//    	saveCurrentCmd = firstControl
+//	Else
+//		String unload = ReplaceString("Unload ",thePackage,"")
+//		cmdList = ReplaceString(thePackage,cmdList,unload)
+//		cmdList = ReplaceString(packageTable[index][1],cmdList,"")
+//		ChangeControls("External Function","")
+//		PopUpMenu AT_CommandPop win=analysis_tools,mode=WhichListItem("External Function",cmdList)+1
+//		saveCurrentCmd = "External Function"
+//		//refresh the values in the external parameter variables
+//
+//		ControlInfo/W=analysis_tools extFuncPopUp
+//		ResolveFunctionParameters("AT_" + S_Value)
+//		recallExtFuncValues(S_Value)
+//		
+//		ControlInfo/W=analysis_tools extFuncDS
+//		SetExtFuncMenus(S_Value)
+//	EndIf
+//End
 
 Function ChangeTabs(currentTab,prevTab)
 	String currentTab,prevTab
 	String cmdStr
 	Variable i
 	SVAR runCmdStr =  root:Packages:analysisTools:runCmdStr
+	SVAR currentCmd = root:Packages:analysisTools:currentCmd
 	
 	strswitch(prevTab)
 		case "Analysis":
@@ -245,8 +299,8 @@ Function ChangeTabs(currentTab,prevTab)
 	
 	strswitch(currentTab)
 		case "Analysis":
-			ControlInfo/W=analysis_tools AT_CommandPop
-			strswitch(S_Value)
+			//ControlInfo/W=analysis_tools AT_CommandPop
+			strswitch(currentCmd)
 				case "MultiROI":
 					SVAR ctrlList = root:Packages:analysisTools:ctrlList_multiROI
 					runCmdStr = "NMultiROI()"

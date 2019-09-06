@@ -51,6 +51,151 @@ End
 Function SetDefaults()
 	SetVariable scriptFolder win=analysis_tools,value=_STR:"~/Desktop/retina-decoder-master"
 	SetVariable denoiseDataFolder win=analysis_tools,value=_STR:"bmb:Users:bmb:Documents:Denoise_Data"
+	
+	
+	Variable/G root:Packages:analysisTools:shortcutSlots
+	NVAR shortcutSlots = root:Packages:analysisTools:shortcutSlots
+	//Defines number of shortcut slots available for use
+	shortcutSlots = 5
+	
+	assignShortcuts()
+End
+
+//Control menu
+Menu "CommandMenu",contextualMenu
+	AddSubMenu("Main"),""
+	
+	SubMenu "Calcium Imaging"
+		AddSubMenu("Calcium Imaging"),""
+	End	
+
+End
+
+//test shortcut handler
+//Works in tandem with assignShortcuts()
+//To add more shortcut slots, just add to them to the submenu, and 
+Menu "Macros"
+	SubMenu "Shortcuts"
+		AddShortcutSlots(),/Q,handleShortCut()
+//		"1/1",/Q,handleShortcut("1");"7/7",/Q,handleShortcut("7")
+//		"2/2",/Q,handleShortcut("2")
+//		"3/3",/Q,handleShortcut("3")
+//		"4/4",/Q,handleShortcut("4")
+//		"5/5",/Q,handleShortcut("5")
+	End
+End
+
+//Adds the shortcut slots
+Function/S AddShortcutSlots()
+	String/G root:Packages:analysisTools:shortcutList
+	
+	SVAR shortcutList = root:Packages:analysisTools:shortcutList
+	NVAR shortcutSlots = root:Packages:analysisTools:shortcutSlots
+	Variable i
+	
+	shortcutList = ""
+	For(i=1;i<shortcutSlots+1;i+=1)
+		print i
+		shortcutList += num2str(i) + "/" + num2str(i) + ";"
+	EndFor
+	return shortcutList
+End
+
+//Assigns shortcut keys to specific functions
+Function assignShortcuts()
+	NVAR shortcutSlots = root:Packages:analysisTools:shortcutSlots
+	Make/O/T/N=(shortcutSlots,2) root:Packages:analysisTools:shortCuts
+	Wave/T shortCuts = root:Packages:analysisTools:shortCuts
+	
+	//Ordered list of functions to be assigned to shortcuts. Currently 5 shortcut slots.
+	//e.g. Run Cmd Line is set for Ctrl-1 (Cmd-1 for Mac), MultiROI is Ctrl-2, etc.
+	//Must put the exact name of the function in the shortCutFunction string list for it to work
+	
+	//Shortcut Definitions
+	String shortCutFunctions = "Run Cmd Line;" //1
+	shortCutFunctions += "MultiROI;" //2
+	shortCutFunctions += "Display ROIs;" //3
+	shortCutFunctions += "Average;" //4
+	shortCutFunctions += "External Function" //5
+
+	Variable i
+	
+	For(i=0;i<ItemsInList(shortCutFunctions,";");i+=1)
+		shortCuts[i][0] = num2str(i+1)
+		shortCuts[i][1] = StringFromList(i,shortCutFunctions,";")
+	EndFor
+End
+
+Function/S handleShortcut()
+	//Get the activated shortcut
+	GetLastUserMenuInfo
+	
+	Wave/T shortCuts = root:Packages:analysisTools:shortCuts
+	SVAR currentCmd = root:Packages:analysisTools:currentCmd
+	SVAR prevCmd = root:Packages:analysisTools:prevCmd
+	
+	String theFunction = shortCuts[str2num(S_Value)-1][1]
+	
+	//Make sure we're in the function tab
+	NVAR currentTab = root:Packages:analysisTools:currentTab
+	
+	If(currentTab == 0)
+		TabControl tabMenu win=analysis_tools,value=1
+		switchTabs(1)
+		currentTab = 1
+	EndIf
+	
+	prevCmd = currentCmd
+	currentCmd = theFunction
+	ChangeControls(currentCmd,prevCmd)
+	
+	//Refresh external function page when it opens
+	If(cmpstr(currentCmd,"External Function") == 0)
+		CheckExternalFunctionControls(currentCmd)
+	Else
+		strswitch(currentCmd)
+			case "Apply Map Threshold":
+			case "Denoise":
+			case "Average":
+			case "Mask Image":
+			case "Dynamic ROI":
+			case "Error":
+			case "Kill Waves":
+			case "Run Cmd Line":
+			case "Duplicate Rename":
+				Wave/Z/T dataSetNames = root:Packages:analysisTools:DataSets:dataSetNames
+				SVAR DSNames = root:Packages:analysisTools:DataSets:DSNames
+				DSNames = "--None--;--Scan List--;--Item List--;" + textWaveToStringList(dataSetNames,";")		
+				break
+		endswitch
+	EndIf
+	
+	Button AT_CommandPop win=analysis_tools,title = "\\JL▼    " + currentCmd
+	DrawAction/W=analysis_tools delete
+	DrawText/W=analysis_tools 15,53,"Commands:"
+End
+
+
+
+//Gets the package commands to put in the menu
+Function/S AddSubMenu(String package)
+	Wave/T packageTable = root:Packages:analysisTools:packageTable
+	Variable index = tableMatch("Calcium Imaging",packageTable)
+	
+	If(index == -1)
+		return ""
+	EndIf
+	
+	strswitch(package)
+		case "Main":
+			String commandStr = "External Function;---------------;Load PClamp;Load Stimulus Data;Clean Desk;---------------;Run Cmd Line/1;Average;Error;PSTH;Kill Waves;Duplicate Rename;Set Wave Note;"
+			break
+		case "Calcium Imaging":
+			commandStr = packageTable[index][1]
+			break
+	endswitch
+	
+	return commandStr
 End
 
 //Organizes the function list into packages
@@ -72,7 +217,7 @@ Function CreatePackages()
 	
 	//packageTable[1][0] = "Basic Functions"
 	//packageTable[1][1] = "-------------------;Average;Error"
-	cmdList = "External Function;---------------;Load PClamp;Load Stimulus Data;Clean Desk;---------------;Run Cmd Line;Average;Error;PSTH;Kill Waves;Duplicate/Rename;Set Wave Note;----Packages----;"
+	cmdList = "External Function;---------------;Load PClamp;Load Stimulus Data;Clean Desk;---------------;Run Cmd Line;Average;Error;PSTH;Kill Waves;Duplicate Rename;Set Wave Note;----Packages----;"
 	
 	For(i=0;i<DimSize(packageTable,0);i+=1)
 		If(!strlen(packageTable[i][0]))
@@ -389,7 +534,9 @@ Function LoadAnalysisSuite([left,top])
 	cdf = GetDataFolder(1)
 	SetVariable AT_cdf win=analysis_tools#scanListPanel,pos={100,8},size={200,20},fsize=10,value=cdf,title=" ",disable=1,frame=0
 	
-	PopUpMenu AT_CommandPop win=analysis_tools,pos={80,36},size={125,20},fsize=12, title="Command:",bodywidth=125,value=#"root:Packages:analysisTools:cmdList",mode=1,disable=1,proc=atPopProc
+	//PopUpMenu AT_CommandPop win=analysis_tools,pos={80,36},size={125,20},fsize=12, title="Command:",bodywidth=125,value=#"root:Packages:analysisTools:cmdList",mode=1,disable=1,proc=atPopProc
+	Button AT_CommandPop win=analysis_tools,pos={83,35},size={125,20},fsize=12,proc=atButtonProc,title="\\JL▼   " + currentCmd,disable=1
+	
 	Button AT_RunCmd win=analysis_tools,pos={260,35},size={50,20},title="Run",disable=1,proc=atButtonProc
 	Button AT_Help win=analysis_tools,pos={210,35},size={20,20},title="?",disable=1,proc=atButtonProc
 	GroupBox AT_HelpBox win=analysis_tools,pos={7,269},size={326,200},disable=1
@@ -403,9 +550,9 @@ Function LoadAnalysisSuite([left,top])
 //	DrawText/W=analysis_tools 30,yPos+60,"Filters"
 	
 	yPos += 5
-	setvariable bslnStVar, win = analysis_tools, pos = {10,yPos}, size = {90, 30},bodywidth=35, noproc, value = root:Packages:analysisTools:GbslnSt, title = "Bsln Start"
-	setvariable peakStVar, win = analysis_tools, pos = {120,yPos}, size = {90, 30}, bodywidth=35,noproc, value = root:Packages:analysisTools:GpeakSt, title = "Peak Start"
-	setvariable numtrialsVar, win = analysis_tools, pos = {230,yPos}, size = {100, 30},bodywidth=35, noproc, value = root:Packages:analysisTools:Gnumtrials, title = "No. of trials"
+	setvariable bslnStVar, win = analysis_tools, pos = {10,yPos}, size = {83, 30}, noproc, value = root:Packages:analysisTools:GbslnSt, title = "Bsln Start"
+	setvariable peakStVar, win = analysis_tools, pos = {120,yPos}, size = {85, 30},noproc, value = root:Packages:analysisTools:GpeakSt, title = "Peak Start"
+	setvariable numtrialsVar, win = analysis_tools, pos = {230,65}, size = {90, 30}, noproc, value = root:Packages:analysisTools:Gnumtrials, title = "No. of trials"
 	
 	//for ROI Display function
 	PopUpMenu horDisplayArrangementPopUp win=analysis_tools,pos={10,yPos},size={75,20},title="Hor. Arrange",value=#"root:Packages:analysisTools:arrangementOptions",disable=1
@@ -452,7 +599,7 @@ Function LoadAnalysisSuite([left,top])
 	SetVariable binSize win=analysis_tools,pos={29,180},size={81,20},title="Bin Size",value=_NUM:0,disable=1
 	
 	
-	//Duplicate/Rename
+	//Duplicate Rename
 	SetVariable prefixName win=analysis_tools,pos={20,60},size={40,20},title="",value=_STR:"",disable=1
 	SetVariable groupName win=analysis_tools,pos={65,60},size={55,20},title=" __",value=_STR:"",disable=1
 	SetVariable seriesName win=analysis_tools,pos={125,60},size={55,20},title=" __",value=_STR:"",disable=1
@@ -619,9 +766,9 @@ Function LoadAnalysisSuite([left,top])
 	
 	
 	yPos += 20
-	setvariable bslnEndVar, win = analysis_tools, pos = {10,yPos}, size = {90, 30},bodywidth=35, noproc, value = root:Packages:analysisTools:GbslnEnd, title = "Bsln End"
-	setvariable peakEndVar, win = analysis_tools, pos = {120,yPos}, size = {90, 30},bodywidth=35, noproc, value = root:Packages:analysisTools:GpeakEnd, title = "Peak End"
-	setvariable BatchsizeVar, win = analysis_tools, pos = {230,yPos}, size = {100, 30},bodywidth=35, noproc, value = root:Packages:analysisTools:GBatchSize, title = "Batch Size"
+	setvariable bslnEndVar, win = analysis_tools, pos = {10,85}, size = {78, 30}, noproc, value = root:Packages:analysisTools:GbslnEnd, title = "Bsln End"
+	setvariable peakEndVar, win = analysis_tools, pos = {120,85}, size = {80, 30}, noproc, value = root:Packages:analysisTools:GpeakEnd, title = "Peak End"
+	setvariable BatchsizeVar, win = analysis_tools, pos = {234,85}, size = {86, 30}, noproc, value = root:Packages:analysisTools:GBatchSize, title = "Batch Size"
 	
 	//setvariable SpaceFilterVar, win = analysis_tools, pos = {30,yPos}, size = {130, 30}, disable = able, noproc, value = root:Packages:analysisTools:GSpaceFilter, title = "Space Filter (pix)"
 	//CheckBox SpaceFilterBox,win = analysis_tools,pos={10,yPos},title = "", proc = atCheckProc
@@ -629,7 +776,7 @@ Function LoadAnalysisSuite([left,top])
 	//CheckBox DarkSubtBox,win = analysis_tools,pos={170,yPos}, title = "", proc = atCheckProc
 	
 	yPos += 20
-	SetVariable SmoothFilterVar win=analysis_tools, pos={20,yPos},size={80,30},bodywidth=35,disable =0,value=root:Packages:analysisTools:GSmoothFilter, title = "Smooth"
+	SetVariable SmoothFilterVar win=analysis_tools, pos={20,yPos},size={73,30},disable =0,value=root:Packages:analysisTools:GSmoothFilter, title = "Smooth"
 	CheckBox SmoothBox,win = analysis_tools,pos={10,yPos}, title = "", proc = atCheckProc
 
 	//CheckBox NotSeqBox,win = analysis_tools,pos={170,yPos},title="Not in sequence?",proc = atCheckProc
@@ -745,7 +892,7 @@ Function CreateControlLists(cmdList)
 	SVAR ctrlList_killwaves = root:Packages:analysisTools:ctrlList_killwaves
 	ctrlList_killwaves = "extFuncDS;extFuncChannelPop;extFuncDSListBox"
 	
-	//Duplicate/Rename
+	//Duplicate Rename
 	String/G root:Packages:analysisTools:ctrlList_duplicateRename
 	SVAR ctrlList_duplicateRename = root:Packages:analysisTools:ctrlList_duplicateRename
 	ctrlList_duplicateRename = "extFuncDS;extFuncChannelPop;extFuncDSListBox;prefixName;groupName;SeriesName;SweepName;TraceName;killOriginals;"
@@ -1017,7 +1164,7 @@ Function ChangeControls(currentCmd,prevCmd)
 		case "Kill Waves":
 			SVAR ctrlList = root:Packages:analysisTools:ctrlList_killwaves
 			break
-		case "Duplicate/Rename":
+		case "Duplicate Rename":
 			SVAR ctrlList = root:Packages:analysisTools:ctrlList_duplicateRename
 			break
 		case "External Function":
@@ -1178,7 +1325,7 @@ Function ChangeControls(currentCmd,prevCmd)
 			SVAR ctrlList = root:Packages:analysisTools:ctrlList_killwaves
 			runCmdStr = "AT_KillWaves()"
 			break
-		case "Duplicate/Rename":
+		case "Duplicate Rename":
 			SVAR ctrlList = root:Packages:analysisTools:ctrlList_duplicateRename
 			runCmdStr = "duplicateRename()"
 			break
@@ -1204,7 +1351,8 @@ Function ChangeControls(currentCmd,prevCmd)
 			break
 		default:
 			//Loads a package if its not a function
-			LoadPackage(currentCmd)
+			
+			//LoadPackage(currentCmd)
 			return 0
 	endswitch
 	
@@ -1267,7 +1415,7 @@ Function ChangeControls(currentCmd,prevCmd)
 			SetVariable bslnStVar win=analysis_tools,pos={232,63}
 			SetVariable bslnEndVar win=analysis_tools,pos={237,83}
 			CheckBox SmoothBox,win=analysis_tools,pos={225,143}
-			SetVariable SmoothFilterVar,win=analysis_tools,pos={240,143}
+			SetVariable SmoothFilterVar,win=analysis_tools,pos={242,143}
 			CheckBox histogramCheck win=analysis_tools,pos={10,110}
 			CheckBox RemoveLaserResponseCheck win=analysis_tools,pos={10,151}
 			CheckBox doDarkSubtract win=analysis_tools,pos={10,171}
@@ -1288,10 +1436,10 @@ Function ChangeControls(currentCmd,prevCmd)
 		case "Line Profile":
 			CheckBox ch1Check,win=analysis_tools,pos={202,142}
 			CheckBox ch2Check,win=analysis_tools,pos={202,162}
-			SetVariable bslnStVar win=analysis_tools,pos={248,165},bodywidth=35
-			SetVariable bslnEndVar win=analysis_tools,pos={248,185},bodywidth=35
-			SetVariable peakStVar win=analysis_tools,pos={248,206},bodywidth=35
-			SetVariable peakEndVar win=analysis_tools,pos={248,226},bodywidth=35
+			SetVariable bslnStVar win=analysis_tools,pos={248,165}
+			SetVariable bslnEndVar win=analysis_tools,pos={253,185}
+			SetVariable peakStVar win=analysis_tools,pos={245,206}
+			SetVariable peakEndVar win=analysis_tools,pos={251,226}
 			CheckBox SmoothBox,win=analysis_tools,pos={115,184}
 			SetVariable SmoothFilterVar,win=analysis_tools,pos={135,185}
 			break
@@ -1363,7 +1511,7 @@ Function ChangeControls(currentCmd,prevCmd)
 		case "Apply Map Threshold":
 		case "Max Project":
 		case "Dynamic ROI":
-		case "Duplicate/Rename":
+		case "Duplicate Rename":
 		case "Average":
 		case "Error":
 		case "PSTH":
@@ -1427,7 +1575,6 @@ Function ChangeControls(currentCmd,prevCmd)
 			ListBox extFuncDSListBox win=analysis_tools,pos={180,121}
 			break
 	endswitch
-
 End
 
 //returns the list of controls for each command
@@ -1530,7 +1677,7 @@ Function/S getControlList(command)
 		case "Kill Waves":
 			SVAR ctrlList = root:Packages:analysisTools:ctrlList_killwaves
 			break
-		case "Duplicate/Rename":
+		case "Duplicate Rename":
 			SVAR ctrlList = root:Packages:analysisTools:ctrlList_duplicateRename
 			break
 		case "External Function":

@@ -4,11 +4,14 @@
 //Called by the buttons
 Function atButtonProc(ba) : ButtonControl
 	STRUCT WMButtonAction &ba
-	SVAR currentCmd = root:Packages:analysisTools:currentCmd
+
 	SVAR runCmdStr = root:Packages:analysisTools:runCmdStr
 	SVAR cdf = root:Packages:analysisTools:currentDataFolder
 	SVAR selectedWave = root:Packages:analysisTools:selectedWave
 	SVAR whichList = root:Packages:analysisTools:whichList
+	
+	SVAR currentCmd = root:Packages:analysisTools:currentCmd
+	SVAR prevCmd = root:Packages:analysisTools:prevCmd
 	
 	//Parameters
 	NVAR Gnumtrials = root:Packages:analysisTools:Gnumtrials
@@ -26,10 +29,59 @@ Function atButtonProc(ba) : ButtonControl
 	switch( ba.eventCode )
 		case 2: // mouse up
 			strswitch(ba.ctrlName)
-				case "AT_RunCmd":
-					ControlInfo/W=analysis_tools AT_CommandPop
+				case "AT_CommandPop":
+					PopUpContextualMenu/C=(83,55)/N "CommandMenu"
 					
-					strswitch(S_Value)
+					String popStr = S_Selection
+					Variable popNum = V_flag
+					
+					If(V_flag == 0 || V_flag == -1)
+						break
+					EndIf
+					
+					If(cmpstr(popStr[0],"-") == 0)
+						return 0
+					EndIf
+			
+					prevCmd = currentCmd
+					currentCmd = popStr
+					
+					ChangeControls(currentCmd,prevCmd)
+					
+					
+					//Refresh external function page when it opens
+					If(cmpstr(popStr,"External Function") == 0)
+						CheckExternalFunctionControls(currentCmd)
+					Else
+						strswitch(popStr)
+							case "Apply Map Threshold":
+							case "Denoise":
+							case "Average":
+							case "Mask Image":
+							case "Dynamic ROI":
+							case "Error":
+							case "Kill Waves":
+							case "Run Cmd Line":
+							case "Duplicate Rename":
+								Wave/Z/T dataSetNames = root:Packages:analysisTools:DataSets:dataSetNames
+								SVAR DSNames = root:Packages:analysisTools:DataSets:DSNames
+								DSNames = "--None--;--Scan List--;--Item List--;" + textWaveToStringList(dataSetNames,";")		
+								break
+						endswitch
+					EndIf
+					
+
+					Button AT_CommandPop win=analysis_tools,title = "\\JL▼    " + popStr
+					NVAR currentTab = root:Packages:analysisTools:currentTab
+					If(currentTab == 1)
+						DrawText/W=analysis_tools 15,53,"Commands:"
+					EndIf
+			
+					break
+				case "AT_RunCmd":
+					//ControlInfo/W=analysis_tools AT_CommandPop
+					
+					strswitch(currentCmd)
 						case "Line Profile":
 							ControlInfo/W=analysis_tools SR_WaveList
 							runCmdStr = ""
@@ -157,14 +209,14 @@ Function atButtonProc(ba) : ButtonControl
 						case "Denoise":
 							Variable denoise = 1
 						case "External Function":
-						case "Duplicate/Rename":
+						case "Duplicate Rename":
 						case "Average":
 						case "Error":
 						case "Denoise":
 						case "Mask Image":
 						case "Max Project":
 						case "Apply Map Threshold":
-						case "Duplicate/Rename":
+						case "Duplicate Rename":
 						case "Kill Waves":
 							SVAR wsDims = root:Packages:analysisTools:DataSets:wsDims
 							NVAR numWaveSets = root:Packages:analysisTools:DataSets:numWaveSets
@@ -290,8 +342,9 @@ Function atButtonProc(ba) : ButtonControl
 					applyLineProfile()
 					break
 				case "AT_Help":
-					ControlInfo/W=analysis_tools AT_CommandPop
-					strswitch(S_Value)
+					
+					//ControlInfo/W=analysis_tools AT_CommandPop
+					strswitch(currentCmd)
 						case "External Function":
 							DisplayHelpTopic "External Functions"
 							break
@@ -1016,81 +1069,9 @@ Function atPopProc(pa) : PopupMenuControl
 	switch( pa.eventCode )
 
 		case 2: // mouse up
-		
+			Variable popNum = pa.popNum
+			String popStr = pa.popStr
 			strswitch(pa.ctrlName)
-				case "AT_CommandPop":
-					Variable popNum = pa.popNum
-					String popStr = pa.popStr
-			
-					If(cmpstr(popStr[0],"-") == 0)
-						return 0
-					EndIf
-			
-					prevCmd = currentCmd
-					currentCmd = popStr
-					ChangeControls(currentCmd,prevCmd)
-					
-					//Refresh external function page when it opens
-					If(cmpstr(pa.popStr,"External Function") == 0)
-						Wave/Z/T dataSetNames = root:Packages:analysisTools:DataSets:dataSetNames
-						SVAR DSNames = root:Packages:analysisTools:DataSets:DSNames
-						DSNames = "--None--;--Scan List--;--Item List--;" + textWaveToStringList(dataSetNames,";")
-					
-						KillExtParams()
-						ControlInfo/W=analysis_tools extFuncPopUp
-						ResolveFunctionParameters("AT_" + S_Value)
-						recallExtFuncValues(S_Value)
-						//Toggle the channel pop up menu
-						ControlInfo/W=analysis_tools extFuncDS
-						If(cmpstr(S_Value,"--Scan List--") == 0)
-							//Scan list selection
-							If(cmpstr(currentCmd,"Get Peaks") == 0)
-								PopUpMenu extFuncChannelPop win=analysis_tools,fsize=12,title="CH",value="1;2",disable=0
-							Else
-								PopUpMenu extFuncChannelPop win=analysis_tools,fsize=12,title="CH",value="1;2",disable=0
-							EndIf
-							ListBox extFuncDSListBox win=analysis_tools,disable=1
-							DrawAction/W=analysis_tools delete
-						ElseIf(cmpstr(S_Value,"--None--") == 0 || cmpstr(S_Value,"--Item List--") == 0)
-							//Item List selection or no wave selection
-							If(cmpstr(currentCmd,"Get Peaks") == 0)
-								PopUpMenu extFuncChannelPop win=analysis_tools,fsize=12,title="CH",value="1;2",disable=1
-							Else
-								PopUpMenu extFuncChannelPop win=analysis_tools,fsize=12,title="CH",value="1;2",disable=1
-							EndIf
-							ListBox extFuncDSListBox win=analysis_tools,disable=1
-							DrawAction/W=analysis_tools delete
-						Else
-							//Data set selection
-							If(cmpstr(currentCmd,"Get Peaks") == 0)
-								PopUpMenu extFuncChannelPop win=analysis_tools,fsize=12,title="CH",value="1;2",disable=1
-							Else
-								PopUpMenu extFuncChannelPop win=analysis_tools,fsize=12,title="CH",value="1;2",disable=1
-							EndIf
-							
-							SetDrawEnv/W=analysis_tools fsize=12,xcoord=abs,ycoord=abs
-							DrawText/W=analysis_tools 230,117,"Waves:"
-							OpenExtFuncWaveListBox(S_Value)
-						EndIf
-					Else
-						strswitch(pa.popStr)
-							case "Apply Map Threshold":
-							case "Denoise":
-							case "Average":
-							case "Mask Image":
-							case "Dynamic ROI":
-							case "Error":
-							case "Kill Waves":
-							case "Run Cmd Line":
-							case "Duplicate/Rename":
-								Wave/Z/T dataSetNames = root:Packages:analysisTools:DataSets:dataSetNames
-								SVAR DSNames = root:Packages:analysisTools:DataSets:DSNames
-								DSNames = "--None--;--Scan List--;--Item List--;" + textWaveToStringList(dataSetNames,";")		
-								break
-						endswitch
-					EndIf
-					
-					break
 				case "presetAngleListPop":
 					popNum = pa.popNum
 					popStr = pa.popStr
@@ -1114,8 +1095,8 @@ Function atPopProc(pa) : PopupMenuControl
 					SVAR wsDims = root:Packages:analysisTools:DataSets:wsDims
 					wsDims = GetWaveSetDims(pa.popStr)
 					
-					ControlInfo/W=analysis_tools AT_CommandPop
-					If(!cmpstr(S_Value,"Run Cmd Line"))
+					//ControlInfo/W=analysis_tools AT_CommandPop
+					If(!cmpstr(currentCmd,"Run Cmd Line"))
 						drawSyntaxInfo()
 					EndIf
 					break
@@ -1218,6 +1199,7 @@ Function switchTabs(newTab)
 			SVAR DSNames = root:Packages:analysisTools:DataSets:dataSetNames
 			DSNames = "--None--;--Scan List--;--Item List--;" + textWaveToStringList(dataSetNames,";")
 			
+			DrawText/W=analysis_tools 15,53,"Commands:"
 			break
 	endswitch
 End
