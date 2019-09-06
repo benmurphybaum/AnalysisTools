@@ -1099,6 +1099,7 @@ Function atPopProc(pa) : PopupMenuControl
 					If(!cmpstr(currentCmd,"Run Cmd Line"))
 						drawSyntaxInfo()
 					EndIf
+					DrawText/W=analysis_tools 15,53,"Commands:"
 					break
 			endswitch
 			break

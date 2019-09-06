@@ -56,7 +56,7 @@ Function SetDefaults()
 	Variable/G root:Packages:analysisTools:shortcutSlots
 	NVAR shortcutSlots = root:Packages:analysisTools:shortcutSlots
 	//Defines number of shortcut slots available for use
-	shortcutSlots = 5
+	shortcutSlots = 6
 	
 	assignShortcuts()
 End
@@ -95,7 +95,6 @@ Function/S AddShortcutSlots()
 	
 	shortcutList = ""
 	For(i=1;i<shortcutSlots+1;i+=1)
-		print i
 		shortcutList += num2str(i) + "/" + num2str(i) + ";"
 	EndFor
 	return shortcutList
@@ -112,11 +111,12 @@ Function assignShortcuts()
 	//Must put the exact name of the function in the shortCutFunction string list for it to work
 	
 	//Shortcut Definitions
-	String shortCutFunctions = "Run Cmd Line;" //1
-	shortCutFunctions += "MultiROI;" //2
-	shortCutFunctions += "Display ROIs;" //3
-	shortCutFunctions += "Average;" //4
-	shortCutFunctions += "External Function" //5
+	String shortCutFunctions = "Data Sets;" //1
+	shortCutFunctions += "External Function;" //2
+	shortCutFunctions += "Run Cmd Line;" //3
+	shortCutFunctions += "MultiROI;" //4
+	shortCutFunctions += "Display ROIs;" //5
+	shortCutFunctions += "Average;" //6
 
 	Variable i
 	
@@ -139,6 +139,14 @@ Function/S handleShortcut()
 	//Make sure we're in the function tab
 	NVAR currentTab = root:Packages:analysisTools:currentTab
 	
+	//special case for Data Sets, need a tab switch, not a function switch
+	If(!cmpstr(theFunction,"Data Sets"))
+		TabControl tabMenu win=analysis_tools,value=0
+		switchTabs(0)
+		currentTab = 0
+		return ""
+	EndIf
+
 	If(currentTab == 0)
 		TabControl tabMenu win=analysis_tools,value=1
 		switchTabs(1)
@@ -190,7 +198,7 @@ Function/S AddSubMenu(String package)
 	
 	strswitch(package)
 		case "Main":
-			String commandStr = "External Function;---------------;Load PClamp;Load Stimulus Data;Clean Desk;---------------;Run Cmd Line/1;Average;Error;PSTH;Kill Waves;Duplicate Rename;Set Wave Note;"
+			String commandStr = "External Function;---------------;Load PClamp;Load Stimulus Data;Clean Desk;---------------;Run Cmd Line;Average;Error;PSTH;Kill Waves;Duplicate Rename;Set Wave Note;"
 			break
 		case "Calcium Imaging":
 			commandStr = packageTable[index][1]
