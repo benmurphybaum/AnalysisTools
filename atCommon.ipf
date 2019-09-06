@@ -4303,13 +4303,13 @@ Function drawSyntaxInfo()
 	String text = "\\f04Syntax"
 	DrawText/W=analysis_tools 20,145,text
 	
-	SetDrawEnv textrgb= (34952,34952,34952)
+	SetDrawEnv/W=analysis_tools textrgb= (34952,34952,34952)
 	text = "Data Set: <myDataSet>\n\nReference WSI: <wsi>\n\nReference WSN: <wsn>"
 	text += "\n\nSpecific WSN/WSI:\n <myDataSet>{wsn,wsi}"
 	DrawText/W=analysis_tools 20,260,text
-	SetDrawEnv textrgb= (34952,34952,34952)
+	SetDrawEnv/W=analysis_tools textrgb= (34952,34952,34952)
 	text = "Specific WSI for all WSN:\n <myDataSet>{*,wsi}"
 	DrawText/W=analysis_tools 20,300,text
 	
-	SetDrawEnv textrgb= (0,0,0)
+	SetDrawEnv/W=analysis_tools textrgb= (0,0,0)
 End

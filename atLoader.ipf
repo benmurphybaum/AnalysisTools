@@ -145,6 +145,9 @@ Function/S handleShortcut()
 		currentTab = 1
 	EndIf
 	
+	//kill previous text in the panel
+	DrawAction/W=analysis_tools delete
+	
 	prevCmd = currentCmd
 	currentCmd = theFunction
 	ChangeControls(currentCmd,prevCmd)
@@ -171,7 +174,6 @@ Function/S handleShortcut()
 	EndIf
 	
 	Button AT_CommandPop win=analysis_tools,title = "\\JL▼    " + currentCmd
-	DrawAction/W=analysis_tools delete
 	DrawText/W=analysis_tools 15,53,"Commands:"
 End
 
