@@ -5304,6 +5304,8 @@ Function AverageWaves()
 	Note/K outWave,num2str(numWaves) + " waves averaged:"
 	For(i=0;i<numWaves;i+=1)
 		Wave theWave = $StringFromList(i,theWaveList,";")
+		Redimension/N=(DimSize(theWave,0)) outWave
+		
 		outWave += theWave
 		Note outWave,GetWavesDataFolder(theWave,2)
 	EndFor
@@ -6289,6 +6291,10 @@ Function PSTH()
 	Variable threshold = V_Value
 	ControlInfo/W=analysis_tools histType
 	String type = S_Value
+	ControlInfo/W=analysis_tools outFolder
+	String folder = S_Value
+	ControlInfo/W=analysis_tools flattenWaveCheck
+	Variable flatten = V_Value
 	
 	Variable i,j,numWaves,numBins
 	
@@ -6298,10 +6304,21 @@ Function PSTH()
 	
 	For(i=0;i<numWaves;i+=1)
 		Wave theWave = $StringFromList(i,waveNameList,";")
-		SetDataFolder GetWavesDataFolder(theWave,1)
+		
+		If(strlen(folder))
+			If(!DataFolderExists(GetWavesDataFolder(theWave,1) + folder))
+				NewDataFolder $(GetWavesDataFolder(theWave,1) + folder)
+			EndIf
+		EndIf
+		
+		SetDataFolder GetWavesDataFolder(theWave,1) + folder
+		
+		If(flatten)
+			flattenWave(theWave)
+		EndIf
 		
 		//get spike times
-		FindLevels/EDGE=1/M=0.002/D=spktm theWave,threshold
+		FindLevels/Q/EDGE=1/M=0.002/D=spktm theWave,threshold
 		
 		strswitch(type)
 			case "Binned":	
@@ -6471,3 +6488,4 @@ Function AT_cleanDesk()
 	
 	DoWindow/F WBr //Keeps Wave Browser visible
 End
+

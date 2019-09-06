@@ -225,7 +225,7 @@ Function atButtonProc(ba) : ButtonControl
 							numWaveSets = 0
 							
 							//Command string
-							If(cmpstr(S_Value,"External Function") == 0)
+							If(cmpstr(currentCmd,"External Function") == 0)
 								runCmdStr = SetExtFuncCmd()
 							EndIf
 						
