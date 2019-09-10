@@ -52,7 +52,7 @@ Function SetDefaults()
 	SetVariable scriptFolder win=analysis_tools,value=_STR:"~/Desktop/retina-decoder-master"
 	SetVariable denoiseDataFolder win=analysis_tools,value=_STR:"bmb:Users:bmb:Documents:Denoise_Data"
 	
-	
+	String/G root:Packages:analysisTools:shortcutList
 	Variable/G root:Packages:analysisTools:shortcutSlots
 	NVAR shortcutSlots = root:Packages:analysisTools:shortcutSlots
 	//Defines number of shortcut slots available for use
@@ -63,12 +63,17 @@ End
 
 //Control menu
 Menu "CommandMenu",contextualMenu
-	AddSubMenu("Main"),""
+		
+		SubMenu "Wave Tools"
+		AddSubMenu("Wave Tools"),""
+	End
+	
 	
 	SubMenu "Calcium Imaging"
 		AddSubMenu("Calcium Imaging"),""
-	End	
-
+	End
+	
+	AddSubMenu("Main"),""
 End
 
 //test shortcut handler
@@ -190,17 +195,30 @@ End
 //Gets the package commands to put in the menu
 Function/S AddSubMenu(String package)
 	Wave/T packageTable = root:Packages:analysisTools:packageTable
-	Variable index = tableMatch("Calcium Imaging",packageTable)
+	Variable index
+	String commandStr = ""
 	
-	If(index == -1)
-		return ""
-	EndIf
 	
 	strswitch(package)
 		case "Main":
-			String commandStr = "External Function;---------------;Load PClamp;Load Stimulus Data;Clean Desk;---------------;Run Cmd Line;Average;Error;PSTH;Kill Waves;Duplicate Rename;Set Wave Note;"
+			index = tableMatch("Main",packageTable)
+			If(index == -1)
+				return ""
+			EndIf
+			commandStr = packageTable[index][1]
+			break
+		case "Wave Tools":
+			index = tableMatch("Wave Tools",packageTable)
+			If(index == -1)
+				return ""
+			EndIf
+			commandStr = packageTable[index][1]
 			break
 		case "Calcium Imaging":
+			index = tableMatch("Calcium Imaging",packageTable)
+			If(index == -1)
+				return ""
+			EndIf
 			commandStr = packageTable[index][1]
 			break
 	endswitch
@@ -216,18 +234,24 @@ Function CreatePackages()
 	Variable i
 	
 	//packageTable: rows are the package name, columns are the contents of that package
-	Make/O/T/N=(1,2) root:Packages:analysisTools:packageTable
+	Make/O/T/N=(3,2) root:Packages:analysisTools:packageTable
 	Wave/T packageTable = root:Packages:analysisTools:packageTable
-	packageTable[0][0] = "Calcium Imaging"
-	packageTable[0][1] =  "-------Basic-------;Max Project;"//use ------ Section ------ to divide categories within the package 
-	packageTable[0][1] += "-------ROIs--------;MultiROI;ROI Grid;Filter ROI;Display ROIs;Kill ROI;Denoise;"
-	packageTable[0][1] += "-------Maps--------;df Map;Vector Sum Map;Line Profile;Apply Map Threshold;Dynamic ROI;"
-	packageTable[0][1] += "-------Masks-------;Get Dendritic Mask;Mask Image;"
-	packageTable[0][1] += "----Registration---;Adjust Galvo Distortion;Register Image;Rescale Scans;"
 	
-	//packageTable[1][0] = "Basic Functions"
-	//packageTable[1][1] = "-------------------;Average;Error"
-	cmdList = "External Function;---------------;Load PClamp;Load Stimulus Data;Clean Desk;---------------;Run Cmd Line;Average;Error;PSTH;Kill Waves;Duplicate Rename;Set Wave Note;----Packages----;"
+	//Main functions
+	packageTable[0][0] = "Main"
+	packageTable[0][1] = ";---------------;External Function;---------------;Load PClamp;Load Stimulus Data;Clean Desk;---------------;Run Cmd Line;Average;Error;PSTH;---------------;"
+	
+	//Calcium Imaging package
+	packageTable[1][0] = "Calcium Imaging"
+	packageTable[1][1] =  "-------Basic-------;Max Project;"//use ------ Section ------ to divide categories within the package 
+	packageTable[1][1] += "-------ROIs--------;MultiROI;ROI Grid;Filter ROI;Display ROIs;Kill ROI;Denoise;"
+	packageTable[1][1] += "-------Maps--------;df Map;Vector Sum Map;Line Profile;Apply Map Threshold;Dynamic ROI;"
+	packageTable[1][1] += "-------Masks-------;Get Dendritic Mask;Mask Image;"
+	packageTable[1][1] += "----Registration---;Adjust Galvo Distortion;Register Image;Rescale Scans;---------------;"
+	
+	//Basic Wave Tools package
+	packageTable[2][0] = "Wave Tools"
+	packageTable[2][1] = "Duplicate Rename;KillWaves;Move To Folder;Set Wave Note;---------------;"
 	
 	For(i=0;i<DimSize(packageTable,0);i+=1)
 		If(!strlen(packageTable[i][0]))
@@ -621,6 +645,10 @@ Function LoadAnalysisSuite([left,top])
 	SetVariable waveNote win=analysis_tools,size={300,20},pos={21,65},fsize=12,title="Note:",value=_STR:"",disable=1
 	CheckBox overwriteNote win=analysis_tools,pos={20,125},size={100,20},title="Overwrite Note",value=0,disable=1
 	
+	//Move To Folder
+	SetVariable moveFolderStr win=analysis_tools,size={300,20},pos={21,60},fsize=12,title="Move to:",value=_STR:"",disable=1
+	SetVariable relativeFolder win=analysis_tools,size={125,20},pos={21,133},fsize=12,limits={-inf,0,1},title="Relative Depth:",value=_NUM:0,disable=1
+	
 	//Load PClamp
 	Button OpenABF2Loader win=analysis_tools,pos={71,66},size={150,20},title="Open PClamp Loader",disable=1,proc=atButtonProc
 	
@@ -912,6 +940,11 @@ Function CreateControlLists(cmdList)
 	SVAR ctrlList_setWaveNote = root:Packages:analysisTools:ctrlList_setWaveNote
 	ctrlList_setWaveNote = "extFuncDS;extFuncChannelPop;extFuncDSListBox;waveNote;overwriteNote;"
 	
+	//Move To Folder
+	String/G root:Packages:analysisTools:ctrlList_moveToFolder
+	SVAR ctrlList_moveToFolder = root:Packages:analysisTools:ctrlList_moveToFolder
+	ctrlList_moveToFolder = "extFuncDS;extFuncChannelPop;extFuncDSListBox;moveFolderStr;relativeFolder;"
+	
 	//Space-Time dF
 	String/G root:Packages:analysisTools:ctrlList_spacetimeDF
 	SVAR ctrlList_spacetimeDF = root:Packages:analysisTools:ctrlList_spacetimeDF
@@ -1096,6 +1129,9 @@ Function ChangeControls(currentCmd,prevCmd)
 		case "Set Wave Note":
 			SVAR ctrlList = root:Packages:analysisTools:ctrlList_setWaveNote
 			break
+		case "Move To Folder":
+			SVAR ctrlList = root:Packages:analysisTools:ctrlList_moveToFolder
+			break	
 		case "Space-Time dF":
 			SVAR ctrlList = root:Packages:analysisTools:ctrlList_spacetimeDF
 			break
@@ -1231,6 +1267,10 @@ Function ChangeControls(currentCmd,prevCmd)
 			SVAR ctrlList = root:Packages:analysisTools:ctrlList_setWaveNote
 			runCmdStr = "AT_setWaveNote()"
 			break
+		case "Move To Folder":
+			SVAR ctrlList = root:Packages:analysisTools:ctrlList_moveToFolder
+			runCmdStr = "moveToFolder()"
+			break	
 		case "Space-Time dF":
 			SVAR ctrlList = root:Packages:analysisTools:ctrlList_spacetimeDF
 			runCmdStr = "SpaceTimeDF()"
@@ -1526,6 +1566,7 @@ Function ChangeControls(currentCmd,prevCmd)
 		case "Error":
 		case "PSTH":
 		case "Set Wave Note":
+		case "Move To Folder":
 		case "Kill Waves":
 		case "Clean Desk":
 		case "Run Cmd Line":
@@ -1609,6 +1650,9 @@ Function/S getControlList(command)
 		case "Set Wave Note":
 			SVAR ctrlList = root:Packages:analysisTools:ctrlList_setWaveNote
 			break
+		case "Move To Folder":
+			SVAR ctrlList = root:Packages:analysisTools:ctrlList_moveToFolder
+			break	
 		case "Space-Time dF":
 			SVAR ctrlList = root:Packages:analysisTools:ctrlList_spacetimeDF
 			break

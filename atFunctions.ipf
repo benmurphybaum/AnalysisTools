@@ -5304,7 +5304,7 @@ Function AverageWaves()
 	Note/K outWave,num2str(numWaves) + " waves averaged:"
 	For(i=0;i<numWaves;i+=1)
 		Wave theWave = $StringFromList(i,theWaveList,";")
-		Redimension/N=(DimSize(theWave,0)) outWave
+		matchScale(outWave,theWave)
 		
 		outWave += theWave
 		Note outWave,GetWavesDataFolder(theWave,2)
@@ -6489,3 +6489,44 @@ Function AT_cleanDesk()
 	DoWindow/F WBr //Keeps Wave Browser visible
 End
 
+
+//Moves the waves to the specified folder, create the folder if it doesn't exist
+Function moveToFolder()
+	
+	String theWaveList = getWaveNames()
+	Variable i,numWaves = ItemsInList(theWaveList,";")
+
+	ControlInfo/W=analysis_tools moveFolderStr
+	String theFolder = S_Value
+	
+	ControlInfo/W=analysis_tools relativeFolder
+	Variable depth = V_Value
+	
+	For(i=0;i<numWaves;i+=1)
+		String folderPath = theFolder
+		Wave theWave = $StringFromList(i,theWaveList,";")
+		String wavePath = GetWavesDataFolder(theWave,1)
+		SetDataFolder $wavePath
+		
+		//finds on the full path to the folder if it's a relative path
+		If(!stringmatch(folderPath,"root:*"))
+			//only takes relative depth into account if it's a relative path
+			If(depth < 0)
+				String relativePath = ParseFilePath(1,wavePath,":",1,abs(depth) - 1) //takes relative depth path
+			Else
+				relativePath = ParseFilePath(2,wavePath,":",1,0) //takes entire path
+			EndIf
+			
+			folderPath = RemoveEnding(relativePath + folderPath,":")
+		EndIf
+		
+		
+		//makes new data folder if it doesn't exist already
+		If(!DataFolderExists(folderPath))
+			NewDataFolder $folderPath
+		EndIf
+		
+		folderPath += ":" + NameOfWave(theWave)
+		MoveWave theWave,$folderPath
+	EndFor
+End
