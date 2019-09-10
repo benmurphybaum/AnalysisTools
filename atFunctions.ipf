@@ -6493,7 +6493,7 @@ End
 //Moves the waves to the specified folder, create the folder if it doesn't exist
 Function moveToFolder()
 	
-	String theWaveList = getWaveNames()
+	String theWaveList = getWaveNames(ignoreWaveGrouping=1)
 	Variable i,numWaves = ItemsInList(theWaveList,";")
 
 	ControlInfo/W=analysis_tools moveFolderStr
