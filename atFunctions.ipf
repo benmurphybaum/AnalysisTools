@@ -1711,23 +1711,38 @@ Function gridROI()//theMask,size)
 	
 	SetDataFolder root:twoP_ROIS
 	
-	//If not overwriting, find pre-existing grid ROIs and get the largest grid index
-	Variable maxIndex = 0
+	//Figure out how many separate grid sets there are (a,b,c,d...)
+	String alphabet = ",a,b,c,d,e" //supports 5 separate grid sets.
+	j = -1
+	Do
+		j+=1
+		Variable letterIndex = tableMatch("grid*" + StringFromList(j,alphabet,","),ROIListWave)
+	While(letterIndex != -1)
+	
 	If(!overwrite)
-		For(i=0;i<DimSize(ROIListWave,0);i+=1)
-			String theROI = ROIListWave[i]
-			If(stringmatch(theROI,"grid*"))
-				Variable gridIndex = str2num(theROI[4,strlen(theROI)-1])
-				If(gridIndex > maxIndex)
-					maxIndex = gridIndex
-				EndIf
-			EndIf
-		EndFor
-		
-		count = maxIndex + 1
+		String letter = StringFromList(j,alphabet,",")
 	Else
-		count = 0
+		letter = ""
 	EndIf
+	
+	//If not overwriting, find pre-existing grid ROIs and get the largest grid index
+//	Variable maxIndex = 0
+//	If(!overwrite)
+//		For(i=0;i<DimSize(ROIListWave,0);i+=1)
+//			String theROI = ROIListWave[i]
+//			
+////			If(stringmatch(theROI,"grid*"))
+////				Variable gridIndex = str2num(theROI[4,strlen(theROI)-1])
+////				If(gridIndex > maxIndex)
+////					maxIndex = gridIndex
+////				EndIf
+//			EndIf
+//		EndFor
+//		
+//		count = maxIndex + 1
+//	Else
+//		count = 0
+//	EndIf
 	
 	gridX = 0
 	
@@ -1741,6 +1756,7 @@ Function gridROI()//theMask,size)
 	i = 0
 	j = 0
 	
+	count = 0
 	Variable initROI = count
 	Variable numROIs = 0
 	String gridROIList = ""
@@ -1756,14 +1772,14 @@ Function gridROI()//theMask,size)
 				grid_ROIMask[gridX][gridY] = 1
 				
 				Redimension/N=(DimSize(ROIListWave,0) + 1) ROIListWave,ROIListSelWave
-				ROIListWave[DimSize(ROIListWave,0) - 1] = "grid" + num2str(count)
+				ROIListWave[DimSize(ROIListWave,0) - 1] = "grid" + num2str(count) + letter
 				
 				//make into an ROI
-				ROIName = "grid" + num2str(count) + "_x"
+				ROIName = "grid" + num2str(count) + letter + "_x"
 				gridROIList += "root:twoP_ROIS:" + ROIName + ";" //for making different colors
 				Make/O/N=5 $ROIName
 				Wave ROIx = $ROIName
-				ROIName = "grid" + num2str(count) + "_y"
+				ROIName = "grid" + num2str(count) + letter + "_y"
 				Make/O/N=5 $ROIName
 				Wave ROIy = $ROIName
 				
