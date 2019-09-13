@@ -252,7 +252,7 @@ Function CreatePackages()
 	
 	//Basic Wave Tools package
 	packageTable[2][0] = "Wave Tools"
-	packageTable[2][1] = "Duplicate Rename;KillWaves;Move To Folder;Set Wave Note;---------------;"
+	packageTable[2][1] = "Duplicate Rename;Kill Waves;Move To Folder;Set Wave Note;---------------;"
 	
 	For(i=0;i<DimSize(packageTable,1);i+=1)
 		If(!strlen(packageTable[i][1]))
