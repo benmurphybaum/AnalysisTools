@@ -231,6 +231,7 @@ Function CreatePackages()
 	
 	String/G root:Packages:analysisTools:cmdList
 	SVAR cmdList = root:Packages:analysisTools:cmdList
+	cmdList = ""
 	Variable i
 	
 	//packageTable: rows are the package name, columns are the contents of that package
@@ -239,7 +240,7 @@ Function CreatePackages()
 	
 	//Main functions
 	packageTable[0][0] = "Main"
-	packageTable[0][1] = ";---------------;External Function;---------------;Load PClamp;Load Stimulus Data;Clean Desk;---------------;Run Cmd Line;Average;Error;PSTH;---------------;"
+	packageTable[0][1] = "---------------;External Function;---------------;Load PClamp;Load Stimulus Data;Clean Desk;---------------;Run Cmd Line;Average;Error;PSTH;---------------;"
 	
 	//Calcium Imaging package
 	packageTable[1][0] = "Calcium Imaging"
@@ -253,11 +254,10 @@ Function CreatePackages()
 	packageTable[2][0] = "Wave Tools"
 	packageTable[2][1] = "Duplicate Rename;KillWaves;Move To Folder;Set Wave Note;---------------;"
 	
-	For(i=0;i<DimSize(packageTable,0);i+=1)
-		If(!strlen(packageTable[i][0]))
+	For(i=0;i<DimSize(packageTable,1);i+=1)
+		If(!strlen(packageTable[i][1]))
 			break
 		EndIf
-		cmdList += packageTable[i][0] + ";"
 	EndFor
 
 End
@@ -395,7 +395,8 @@ Function LoadAnalysisSuite([left,top])
 	CreatePackages()
 	SVAR cmdList = root:Packages:analysisTools:cmdList
 	SVAR currentCmd = root:Packages:analysisTools:currentCmd
-	currentCmd = StringFromList(0,cmdList,";")
+	//currentCmd = StringFromList(0,cmdList,";")
+	currentCmd = "External Function"
 	
 	//For the Operation command and wave matching
 	String/G root:Packages:analysisTools:waveMatchStr
