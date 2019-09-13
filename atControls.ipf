@@ -1142,7 +1142,7 @@ Function switchTabs(newTab)
 	String functionCtrlList = "AT_CommandPop;AT_Help;AT_RunCmd"
 	
 	//control list for functions that need the data set and scan options.
-	String dsFunctions = "External Function;Mask Image;Denoise;Max Project;Dynamic ROI;Duplicate/Rename;Average;Error;PSTH;Set Wave Note;Kill Waves;Run Cmd Line;"
+	String dsFunctions = "External Function;Mask Image;Denoise;Max Project;Dynamic ROI;Duplicate Rename;Average;Error;PSTH;Set Wave Note;Kill Waves;Run Cmd Line;"
 	
 	switch(newTab)
 		case 0://Data Sets
