@@ -98,10 +98,15 @@ Function/S AddShortcutSlots()
 	NVAR shortcutSlots = root:Packages:analysisTools:shortcutSlots
 	Variable i
 	
+	If(!SVAR_Exists(shortcutList))
+		return ""
+	EndIf
+	
 	shortcutList = ""
 	For(i=1;i<shortcutSlots+1;i+=1)
 		shortcutList += num2str(i) + "/" + num2str(i) + ";"
 	EndFor
+	
 	return shortcutList
 End
 
