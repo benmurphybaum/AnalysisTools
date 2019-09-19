@@ -1641,15 +1641,16 @@ Function gridROI()//theMask,size)
 	
 	
 	ControlInfo/W=analysis_tools maskListPopUp
-	Variable scanPosition = WhichListItem("Scan",S_Value,"_")
+	String maskString = S_Value
+	Variable scanPosition = WhichListItem("Scan",maskString,"_")
 	
 	If(scanPosition != -1)
-		String theScanStr = RemoveEnding(ParseFilePath(1,S_Value,"_",0,scanPosition+2),"_")
+		String theScanStr = RemoveEnding(ParseFilePath(1,maskString,"_",0,scanPosition+2),"_")
 		SetDataFolder root:twoP_Scans:$theScanStr
 	EndIf
 	
 	//If there is no mask, make one
-	Wave/Z theMask = $S_Value
+	Wave/Z theMask = $maskString
 	If(!WaveExists(theMask))
 		Wave theScan = $selectedScanStr
 		If(!WaveExists(theScan))
@@ -1837,8 +1838,10 @@ Function gridROI()//theMask,size)
 		b = num2str(rainbowWave[index][2])
 		Note/K/NOCR $StringFromList(i,gridROIList,";"),"WaveType:ROIsquare;Red:" + r + ";green:" + g + ";Blue:" + b + ";"
 	EndFor
-	//Cleanup 
-	KillWaves/Z theMask
+	//Cleanup
+	If(!cmpstr(maskString,"None"))
+		KillWaves/Z theMask
+	EndIf
 End
 
 //Takes the time-varying ROI data from GetROI(), and identifies ROIs that have no signal
