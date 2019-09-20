@@ -6549,3 +6549,72 @@ Function moveToFolder()
 		MoveWave theWave,$folderPath
 	EndFor
 End
+
+Function VectorSum3(inputWave,doPrint,returnItem,[scaled,angleWave])
+	Wave inputWave
+	Variable doPrint
+	String returnItem
+	Variable scaled
+	Wave angleWave
+	
+	SetDataFolder GetWavesDataFolder(inputWave,1)
+	
+	If(!DataFolderExists("root:var"))
+		NewDataFolder root:var
+	EndIf
+	
+	If(ParamIsDefault(angleWave))
+		Make/O/N=8 root:var:direction
+		Wave angleWave = root:var:direction
+		If(ParamIsDefault(scaled))
+			angleWave = 45*x
+		Else
+			angleWave = DimOffset(inputWave,0) + DimDelta(inputWave,0) * x
+		EndIf
+	EndIf
+	
+	If(cmpstr(returnItem,"vAngle") !=0 && cmpstr(returnItem,"vRadius") !=0 && cmpstr(returnItem,"DSI") !=0)
+		DoAlert 0,"Must indicate return value of 'vAngle','vRadius', or 'DSI'."
+		return -1
+	EndIf
+	
+	Variable i
+	Variable vSumX,vSumY,totalSignal
+	Variable numAngles = DimSize(angleWave,0)
+
+	vSumX = 0
+	vSumY = 0
+	totalSignal = 0
+
+	For(i=0;i<numAngles;i+=1)
+		If(numtype(inputWave[i]) == 2) 
+			continue
+		EndIf
+		vSumX += inputWave[i]*cos(angleWave[i]*pi/180)
+		vSumY += inputWave[i]*sin(angleWave[i]*pi/180)
+		totalSignal += inputWave[i]
+	EndFor
+	
+	Variable vRadius = sqrt(vSumX^2 + vSumY^2)
+	Variable vAngle = -atan2(vSumY,vSumX)*180/pi
+	Variable	DSI = vRadius/totalSignal
+	
+	If(vAngle < 0)
+		vAngle +=360
+	Endif
+	
+	vAngle = 360 - vAngle
+	
+	If(doPrint)
+		print "vAngle =",vAngle,"\r  vRadius =",vRadius,"\r  DSI =",DSI	
+	EndIf
+	
+	If(cmpstr(returnItem,"vAngle") == 0)
+		return vAngle
+	ElseIf(cmpstr(returnItem,"vRadius") == 0)
+		return vRadius
+	ElseIf(cmpstr(returnItem,"DSI") == 0)
+		return DSI
+	EndIf
+	
+End Function
