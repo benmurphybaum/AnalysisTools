@@ -1411,7 +1411,7 @@ Function filterByBlockSize(original,ds,value)
 	//Get data set name
 	String dataSetName = StringFromList(1,NameOfWave(ds),"_")
 	
-	Variable waveSetSize,numWaveSets,blockSize,nextBlock,count,i,j,numWaves,index
+	Variable waveSetSize,numWaveSets,blockSize,nextBlock,count,totalCount,i,j,numWaves,index
 	
 	numWaves = DimSize(original,0)
 	//reset the wave groupings to the original ungrouped state
@@ -1426,6 +1426,7 @@ Function filterByBlockSize(original,ds,value)
 	
 	blockSize = str2num(value)
 	index = 0
+	totalCount = 0
 	
 	For(j=0;j<numWaveSets;j+=1)
 		waveSetSize = str2num(StringFromList(j,wsDims,";"))
@@ -1437,11 +1438,12 @@ Function filterByBlockSize(original,ds,value)
 		For(i=0;i<waveSetSize;i+=1)
 			If(i == nextBlock)
 				InsertPoints index + count,1,tempDS
-				tempDS[index] = "----WSN " + num2str(count) + "----"
+				tempDS[index] = "----WSN " + num2str(totalCount) + "----"
 				index += 1
 				tempDS[index] = StringFromList(i,theWaves,";")
 				index += 1
 				count += 1
+				totalCount += 1
 				nextBlock = blockSize * count
 			Else
 				tempDS[index] = StringFromList(i,theWaves,";")//ds[i-count]
@@ -1465,7 +1467,7 @@ Function filterByStride(original,ds,value)
 	String value
 	
 	Variable numWaves,stride = str2num(value)
-	Variable nextStride,numStrides,j,k,i,count,waveSetSize,numWaveSets,index
+	Variable nextStride,numStrides,j,k,i,count,totalCount,waveSetSize,numWaveSets,index
 	
 	//Get data set name
 	String dataSetName = StringFromList(1,NameOfWave(ds),"_")
@@ -1477,6 +1479,7 @@ Function filterByStride(original,ds,value)
 	//dimensions of current organization
 	String wsDims = getWaveSetDims(dataSetName)
 	numWaveSets = ItemsInList(wsDims,";")
+	totalCount = 0
 	
 	For(j=0;j<numWaveSets;j+=1)
 		//Get the waves in the waveset
@@ -1489,8 +1492,9 @@ Function filterByStride(original,ds,value)
 		For(k=0;k<stride;k+=1)
 			//insert another WSN reference in the data set
 			InsertPoints index + k,1,tempDS
-			tempDS[index] = "----WSN " + num2str(count) + "----"
+			tempDS[index] = "----WSN " + num2str(totalCount) + "----"
 			index += 1
+			totalCount += 1
 			
 			//cycle through each wave in the waveset, by the stride length
 			For(i=count;i<waveSetSize;i+=stride)

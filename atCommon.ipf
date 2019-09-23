@@ -2815,18 +2815,19 @@ Function applyLineProfile()
 		If(doDF)
 
 			ControlInfo/W=analysis_tools bslnStVar
-			baselineStart = V_Value
+			baselineStart = ScaleToIndex(theWave,V_Value,2)
 			ControlInfo/W=analysis_tools bslnEndVar
-			baselineEnd = V_Value
+			baselineEnd = ScaleToIndex(theWave,V_Value,2)
 					
 			//Get the baseline portion of the scan
 			Make/FREE/N=(DimSize(theWave,0),DimSize(theWave,1),baselineEnd-baselineStart) baselineScan
 			baselineScan = theWave[p][q][baselineStart + r]
+			
 			//Set Scales
 			SetScale/P x,DimOffset(theWave,0),DimDelta(theWave,0),baselineScan
 			SetScale/P y,DimOffset(theWave,1),DimDelta(theWave,1),baselineScan
 			SetScale/P z,DimOffset(theWave,2),DimDelta(theWave,2),baselineScan
-					
+			
 			//Set data folder to the waves folder
 			SetDataFolder GetWavesDataFolder(theWave,1)
 					
@@ -2845,6 +2846,8 @@ Function applyLineProfile()
 				KillWaves/Z baselineProfile
 				Wave baselineProfile = W_ImageBaselineProfile
 			EndIf
+			
+			//Smooth/S=2/DIM=1 13,baselineProfile
 					
 			//Collapse to mean baseline
 			collapseLineProfile(baselineProfile,theWave,"avg")
@@ -2953,9 +2956,10 @@ Function collapseLineProfile(theProfile,theWave,type,[start,stop])
 		SetScale/P x,DimOffset(theProfile,1),DimDelta(theProfile,1),theCol
 		If(cmpstr(type,"max") == 0)
 			WaveStats/Q/R=(start,stop) theCol
-			theProfile[i] = mean(theCol,V_maxLoc - 0.05,V_maxLoc + 0.05)
+			//theProfile[i] = mean(theCol,V_maxLoc - 0.05,V_maxLoc + 0.05)
+			theProfile[i] = V_max
 		ElseIf(cmpstr(type,"avg") == 0)
-			theProfile[i] = Mean(theCol)
+			theProfile[i] = median(theCol)
 		ElseIf(cmpstr(type,"area") == 0)
 			theProfile[i] = area(theCol,start,stop)
 		
