@@ -2995,21 +2995,45 @@ End
 //other test images or scans from the scan list box.
 
 Function GetRegistrationParameters()
-	Variable offsetX,offsetY,dX,dY,useScanList,i
+	Variable offsetX,offsetY,dX,dY,useScanList,i,j
 	SVAR scanListStr = root:Packages:twoP:examine:scanListStr
 	
 	//Get the channel
-	String channel = RemoveEnding(getChannel(1),";")
+	//String channel = RemoveEnding(getChannel(1),";")
+	
+	//Reference channel
+	ControlInfo/W=analysis_tools refImageChMenu
+	String refCh = S_Value
+	
+	//Test channel
+	ControlInfo/W=analysis_tools testImageChMenu
+	String testCh = S_Value
 	
 	//Get the reference image	
 	ControlInfo/W=analysis_tools refImagePopUp
-	Wave refImage = $("root:twoP_Scans:" + S_Value + ":" + S_Value + "_" + channel)
+	Wave refImage = $("root:twoP_Scans:" + S_Value + ":" + S_Value + "_" + refCh)
 		
 	//Get the reference image offsets and deltas
 	offsetX = DimOffset(refImage,0)
 	offsetY = DimOffset(refImage,1)
 	dX = DimDelta(refImage,0)
 	dY = DimDelta(refImage,1)
+	
+	If(!DataFolderExists("root:Packages:analysisTools:Registration"))
+		NewDataFolder root:Packages:analysisTools:Registration
+	EndIf
+	
+	//Kill all waves in the Registration data folder
+	SetDataFolder root:Packages:analysisTools:Registration
+	String theList = WaveList("*",";","")
+	Variable numWaves = ItemsInList(theList,";")
+	
+	For(i=0;i<numWaves;i+=1)
+		String item = StringFromList(i,theList,";")
+		Wave theWave = $item
+		KillWaves/Z theWave
+	EndFor
+	
 	
 	//Max project the reference wave. This will be the wave actually operated on
 	//to get the regstration parameters.
@@ -3021,41 +3045,161 @@ Function GetRegistrationParameters()
 	ControlInfo/W=analysis_tools useScanListCheck
 	useScanList = V_Value
 	
-	If(useScanList)
+	//If(useScanList)
 		String testImageList = scanListStr
-	Else
-		ControlInfo/W=analysis_tools testImagePopUp
-		testImageList = S_Value
+//	Else
+//		ControlInfo/W=analysis_tools testImagePopUp
+//		testImageList = S_Value
+//	EndIf
+	
+	//Get marquee for potential mask ROI
+	String graphList = StringFromList(0,WinList("*",";","WIN:1"),";")
+	If(!cmpstr(graphList,"twoPscanGraph"))
+		String children = ChildWindowList(graphList)
+		graphList += "#" + StringFromList(0,children,";")
 	EndIf
 	
+	String axis = AxisList(graphList)
+	GetMarquee/Z/W=$StringFromList(0,graphList,";") $StringFromList(0,axis,";"),$StringFromList(1,axis,";")
+	
+	Make/FREE/O/N=5 roiWaveX,roiWaveY
+	roiWaveX[0] = V_right
+	roiWaveX[1] = V_right
+	roiWaveX[2] = V_left
+	roiWaveX[3] = V_left
+	roiWaveX[4] = V_right
+	
+	roiWaveY[0] = V_top
+	roiWaveY[1] = V_bottom
+	roiWaveY[2] = V_bottom
+	roiWaveY[3] = V_top
+	roiWaveY[4] = V_top
+	
+	SetDataFolder root:
+	
+	//ROI mask seed values
+	Variable maskMax,maskMin,xSeed,ySeed
+	WaveStats/Q refImage
+	
+	maskMin = WaveMin(roiWaveX)
+	maskMax = WaveMax(roiWaveX)
+	
+	xSeed = maskMax + DimDelta(refImage,0)
+	If(xSeed > IndexToScale(refImage,DimSize(refImage,0)-1,0))
+		xSeed = IndexToScale(refImage,0,0)
+	EndIf
+	
+	maskMin = WaveMin(roiWaveY)
+	maskMax = WaveMax(roiWaveY)
+	
+	ySeed = maskMax + DimDelta(refImage,1)
+	If(ySeed > IndexToScale(refImage,DimSize(refImage,1)-1,1))
+		ySeed = IndexToScale(refImage,0,1)
+	EndIf
+	
+	ImageBoundaryToMask width=DimSize(refImage,0),height=DimSize(refImage,1),xwave=roiWaveX,ywave=roiWaveY,scalingwave=refImage,seedx=xSeed,seedy=ySeed
+	Wave refMask = root:M_ROIMask	
+	Duplicate/FREE refMask,testMask
+	
 	//Register the images
-	For(i=0;i<ItemsInList(testImageList,";");i+=1)
-		String theWaveName = StringFromList(i,testImageList,";")
-		Wave testImage = $("root:twoP_Scans:" + theWaveName + ":" + theWaveName + "_" + channel)
-		//Max project the test wave
-		MatrixOP/O/FREE testMaxProj = sumBeams(testImage)
-		SetScale/P x,offsetX,dX,testMaxProj
-		SetScale/P y,offsetY,dY,testMaxProj
-		Redimension/S testMaxProj
+	strswitch(testCh)
+		case "ch1":
+		case "ch2":
+			break
+		case "Both":
+			testCh = "ch1;ch2"
+			break
+	endswitch
+	
+	For(j=0;j<ItemsInList(testCh,";");j+=1)
+		String channel = StringFromList(j,testCh,";")
+		For(i=0;i<ItemsInList(testImageList,";");i+=1)
 		
-		SetDataFolder GetWavesDataFolder(testImage,1)
-		ImageRegistration/REFM=0/TSTM=0/TRNS={1,1,0}/CONV=1/Q testWave=testMaxProj,refWave=refMaxProj
-		Wave param = W_RegParams
-		If(!WaveExists(param))
-			Abort "Cannot find the registration parameter wave."
-		Else
-			Redimension/N=7 param
-			param[3] = offsetX;SetDimLabel 0,3,'X Offset',param
-			param[4] = offsetY;SetDimLabel 0,4,'Y Offset',param
-			param[5] = dX;SetDimLabel 0,5,dX,param
-			param[6] = dY;SetDimLabel 0,6,dY,param
-		EndIf
+			//Get the registration parameters
+			String theWaveName = StringFromList(i,testImageList,";")
+			Wave testImage = $("root:twoP_Scans:" + theWaveName + ":" + theWaveName + "_" + channel)
+			
+			Duplicate/O testImage,$("root:Packages:analysisTools:Registration:" + NameOfWave(testImage))
+			
+			//Max project the test wave
+			MatrixOP/O/FREE testMaxProj = sumBeams(testImage)
+			SetScale/P x,offsetX,dX,testMaxProj
+			SetScale/P y,offsetY,dY,testMaxProj
+			Redimension/S testMaxProj,testMask,refMask
+			
+			SetDataFolder GetWavesDataFolder(testImage,1)
+			ImageRegistration/REFM=0/TSTM=0/TRNS={1,1,0}/CONV=1/Q testMask=testMask,refMask=refMask,testWave=testMaxProj,refWave=refMaxProj
+			Wave param = W_RegParams
+			If(!WaveExists(param))
+				Abort "Cannot find the registration parameter wave."
+			Else
+				Redimension/N=7 param
+				param[3] = offsetX;SetDimLabel 0,3,'X Offset',param
+				param[4] = offsetY;SetDimLabel 0,4,'Y Offset',param
+				param[5] = dX;SetDimLabel 0,5,dX,param
+				param[6] = dY;SetDimLabel 0,6,dY,param
+			EndIf
+			
+			Variable xDelta,yDelta,applyOffsetX,applyOffsetY
+			//Apply the registration parameters
+			xDelta = round(param[0])
+			yDelta = round(param[1])
+			
+			KillWaves/Z param //clean up
+			
+			Variable theMean = mean(testImage) //this value will be added with noise to blank pixels that are added from registration.
+			
+			If(xDelta < 0)
+				DeletePoints/M=0 0,-xDelta,testImage
+				InsertPoints/M=0 DimSize(testImage,0),-xDelta,testImage
+				//testImage[DimSize(testImage,0)+xDelta,DimSize(testImage,0)-1][] = testImage[p+xDelta][q]
+				//inserted points become noise around the mean signal
+				testImage[DimSize(testImage,0)+xDelta,DimSize(testImage,0)-1][] = theMean + gnoise(0.05*theMean)
+			ElseIf(xDelta > 0)
+				InsertPoints/M=0 0,xDelta,testImage
+				DeletePoints/M=0 DimSize(testImage,0)-xDelta,xDelta,testImage
+				//testImage[0,xDelta-1][] = testImage[p+xDelta][q]
+				testImage[0,xDelta-1][] = theMean + gnoise(0.05*theMean)
+			EndIf
+		
+			If(yDelta < 0)
+				DeletePoints/M=1 0,-yDelta,testImage
+				InsertPoints/M=1 DimSize(testImage,1),-yDelta,testImage
+				//testImage[][DimSize(testImage,1)+yDelta,DimSize(testImage,1)-1] = testImage[p][q+yDelta]
+				testImage[][DimSize(testImage,1)+yDelta,DimSize(testImage,1)-1] = theMean + gnoise(0.05*theMean)
+			ElseIf(yDelta > 0)
+				InsertPoints/M=1 0,yDelta,testImage
+				DeletePoints/M=1 DimSize(testImage,1)-yDelta,yDelta,testImage
+				//testImage[][0,yDelta-1] = testImage[p][q+yDelta]
+				testImage[][0,yDelta-1] = theMean + gnoise(0.05*theMean)
+			EndIf
+			
+		EndFor
 	EndFor
 	
 	Wave regWave = M_RegMaskOut
 	KillWaves/Z regWave
 	Wave regWave = M_RegOut
 	KillWaves/Z regWave
+End
+
+
+//Undo for image registration. This only works for the most recent registration command.
+//Originals are held in root:Packages:analysisTools:Registration
+Function undoRegistration()
+	SetDataFolder root:Packages:analysisTools:Registration
+	String theList = WaveList("*",";","")
+	Variable i,numWaves = ItemsInList(theList,";")
+	
+	For(i=0;i<numWaves;i+=1)
+		String item = StringFromList(i,theList,";")
+		Wave theWave = $item
+		
+		String folder = RemoveEnding(ParseFilePath(1,item,"_",1,0),"_")
+		String fullPath = "root:twoP_Scans:" + folder + ":" + item
+		Duplicate/O theWave,$fullPath	//overwrite wave in the scan folder
+		KillWaves/Z theWave
+	EndFor
 End
 
 //Returns the name of the checked channel

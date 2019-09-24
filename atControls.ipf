@@ -365,8 +365,8 @@ Function atButtonProc(ba) : ButtonControl
 					Wave theMask = $S_Value
 					OpenMask(theMask)
 					break
-				case "applyImageRegistration":
-					applyImageRegTemplate()
+				case "undoRegistration":
+					undoRegistration()
 					break
 				case "equalizeDimensions":
 					EqualizeDimensions()

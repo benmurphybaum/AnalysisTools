@@ -734,10 +734,14 @@ Function LoadAnalysisSuite([left,top])
 	//For image registration (translation)
 	
 	Button applyImageRegistration win=analysis_tools,size={150,20},pos={125,160},title="Apply Template",disable=1,proc=atButtonProc
-	Button equalizeDimensions win=analysis_tools,size={150,20},pos={125,185},title="Equalize Dimensions",disable=1,proc=atButtonProc
+	Button undoRegistration win=analysis_tools,size={71,20},pos={177,109},title="Undo",disable=1,proc=atButtonProc
 	PopUpMenu refImagePopUp win=analysis_tools,bodywidth=175,pos={220,85},title="Reference Image",disable=1,value=#"root:Packages:analysisTools:scanFolderList"
-	PopUpMenu testImagePopUp win=analysis_tools,bodywidth=175,pos={220,110},title="Test Image",disable=1,value=#"root:Packages:analysisTools:scanFolderList"
-	PopUpMenu registrationTemplatePopUp win=analysis_tools,bodywidth=175,pos={220,135},title="Templates",disable=1,value=getWaveList("W_RegParams")
+	PopUpMenu refImageChMenu win=analysis_tools,pos={276,85},title="",disable=1,value="ch1;ch2;"
+	//PopUpMenu testImagePopUp win=analysis_tools,bodywidth=175,pos={220,110},title="Test Image",disable=1,value=#"root:Packages:analysisTools:scanFolderList"
+	PopUpMenu testImageChMenu win=analysis_tools,pos={15,110},title="Registered Image",disable=1,value="ch1;ch2;Both;"
+	//PopUpMenu registrationTemplatePopUp win=analysis_tools,bodywidth=175,pos={220,135},title="Templates",disable=1,value=getWaveList("W_RegParams")
+	
+	
 	//WaveList("W_RegParams",";","")
 	
 	//For Data Sets
@@ -1020,7 +1024,7 @@ Function CreateControlLists(cmdList)
 	//Register image (translation)
 	String/G root:Packages:analysisTools:ctrlList_registerImage
 	SVAR ctrlList_registerImage = root:Packages:analysisTools:ctrlList_registerImage
-	ctrlList_registerImage = "applyImageRegistration;refImagePopUp;testImagePopUp;registrationTemplatePopUp;useScanListCheck;ch1Check;ch2Check"
+	ctrlList_registerImage = "refImagePopUp;testImagePopUp;registrationTemplatePopUp;refImageChMenu;testImageChMenu;undoRegistration;"
 	
 	//Vector Sum Map
 	String/G root:Packages:analysisTools:ctrlList_vectorSumMap
