@@ -3107,47 +3107,57 @@ Function GetRegistrationParameters()
 		case "ch2":
 			break
 		case "Both":
-			testCh = "ch1;ch2"
+			//make sure first channel of test wave is the same as the reference wave
+			If(!cmpstr(refCh,"ch1"))
+				testCh = "ch1;ch2"
+			ElseIf(!cmpstr(refCh,"ch2"))
+				testCh = "ch2;ch1"
+			EndIf
 			break
 	endswitch
 	
-	For(j=0;j<ItemsInList(testCh,";");j+=1)
-		String channel = StringFromList(j,testCh,";")
-		For(i=0;i<ItemsInList(testImageList,";");i+=1)
+	String channel = StringFromList(0,testCh,";") //only do registration on the first channel in list, apply those parameters to the second channel in list.
 		
-			//Get the registration parameters
-			String theWaveName = StringFromList(i,testImageList,";")
-			Wave testImage = $("root:twoP_Scans:" + theWaveName + ":" + theWaveName + "_" + channel)
-			
-			Duplicate/O testImage,$("root:Packages:analysisTools:Registration:" + NameOfWave(testImage))
-			
-			//Max project the test wave
-			MatrixOP/O/FREE testMaxProj = sumBeams(testImage)
-			SetScale/P x,offsetX,dX,testMaxProj
-			SetScale/P y,offsetY,dY,testMaxProj
-			Redimension/S testMaxProj,testMask,refMask
-			
-			SetDataFolder GetWavesDataFolder(testImage,1)
-			ImageRegistration/REFM=0/TSTM=0/TRNS={1,1,0}/CONV=1/Q testMask=testMask,refMask=refMask,testWave=testMaxProj,refWave=refMaxProj
-			Wave param = W_RegParams
-			If(!WaveExists(param))
-				Abort "Cannot find the registration parameter wave."
-			Else
-				Redimension/N=7 param
-				param[3] = offsetX;SetDimLabel 0,3,'X Offset',param
-				param[4] = offsetY;SetDimLabel 0,4,'Y Offset',param
-				param[5] = dX;SetDimLabel 0,5,dX,param
-				param[6] = dY;SetDimLabel 0,6,dY,param
-			EndIf
-			
-			Variable xDelta,yDelta,applyOffsetX,applyOffsetY
-			//Apply the registration parameters
-			xDelta = round(param[0])
-			yDelta = round(param[1])
-			
-			KillWaves/Z param //clean up
-			
-			Variable theMean = mean(testImage) //this value will be added with noise to blank pixels that are added from registration.
+	//loop through the selection in the scan list
+	For(i=0;i<ItemsInList(testImageList,";");i+=1)
+		
+		//Get the registration parameters
+		String theWaveName = StringFromList(i,testImageList,";")
+		Wave testImage = $("root:twoP_Scans:" + theWaveName + ":" + theWaveName + "_" + channel)
+		
+		Duplicate/O testImage,$("root:Packages:analysisTools:Registration:" + NameOfWave(testImage))
+		
+		//Max project the test wave
+		MatrixOP/O/FREE testMaxProj = sumBeams(testImage)
+		SetScale/P x,offsetX,dX,testMaxProj
+		SetScale/P y,offsetY,dY,testMaxProj
+		Redimension/S testMaxProj,testMask,refMask
+		
+		SetDataFolder GetWavesDataFolder(testImage,1)
+		ImageRegistration/REFM=0/TSTM=0/TRNS={1,1,0}/CONV=1/Q testMask=testMask,refMask=refMask,testWave=testMaxProj,refWave=refMaxProj
+		Wave param = W_RegParams
+		If(!WaveExists(param))
+			Abort "Cannot find the registration parameter wave."
+		Else
+			Redimension/N=7 param
+			param[3] = offsetX;SetDimLabel 0,3,'X Offset',param
+			param[4] = offsetY;SetDimLabel 0,4,'Y Offset',param
+			param[5] = dX;SetDimLabel 0,5,dX,param
+			param[6] = dY;SetDimLabel 0,6,dY,param
+		EndIf
+		
+		Variable xDelta,yDelta,applyOffsetX,applyOffsetY
+		//Apply the registration parameters
+		xDelta = round(param[0])
+		yDelta = round(param[1])
+		
+		KillWaves/Z param //clean up
+		
+		Variable theMean = mean(testImage) //this value will be added with noise to blank pixels that are added from registration.
+		
+		//loop through all the test channels to be registered using these the calculated registration parameters
+		For(j=0;j<ItemsInList(testCh,";");j+=1)
+			Wave testImage = $("root:twoP_Scans:" + theWaveName + ":" + theWaveName + "_" + StringFromList(j,testCh,";"))
 			
 			If(xDelta < 0)
 				DeletePoints/M=0 0,-xDelta,testImage
@@ -3173,7 +3183,7 @@ Function GetRegistrationParameters()
 				//testImage[][0,yDelta-1] = testImage[p][q+yDelta]
 				testImage[][0,yDelta-1] = theMean + gnoise(0.05*theMean)
 			EndIf
-			
+		
 		EndFor
 	EndFor
 	
@@ -4460,4 +4470,15 @@ Function drawSyntaxInfo()
 	DrawText/W=analysis_tools 20,300,text
 	
 	SetDrawEnv/W=analysis_tools textrgb= (0,0,0)
+End
+
+//Replaces the indicated list item with the replaceWith string
+Function/S ReplaceListItem(index,listStr,separator,replaceWith)
+	Variable index
+	String listStr,separator,replaceWith
+	
+	listStr = RemoveListItem(index,listStr,separator)
+	listStr = AddListItem(replaceWith,listStr,separator,index)
+	
+	return listStr
 End

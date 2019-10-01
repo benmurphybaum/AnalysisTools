@@ -774,6 +774,11 @@ Function GetROI()
 			
 				Wave ROIMask = $(ROIFolder + ":M_ROIMask")	
 				
+				//custom ROI
+//				Wave ROIMask = root:twoP_Scans:Scan_016:overlap
+//				Redimension/B/U ROIMask
+//				theROI = "NonOverlap"
+				
 				//Did the ROI mask actually get created?
 				If(!WaveExists(ROIMask))
 					DoAlert 0, "Couldn't find the ROI mask wave for: " + NameOfWave(theScan)
@@ -6578,42 +6583,73 @@ Function VectorSum3(inputWave,doPrint,returnItem,[scaled,angleWave])
 		return -1
 	EndIf
 	
-	Variable i
+	Variable i,j,numCols
 	Variable vSumX,vSumY,totalSignal
 	Variable numAngles = DimSize(angleWave,0)
-
-	vSumX = 0
-	vSumY = 0
-	totalSignal = 0
-
-	For(i=0;i<numAngles;i+=1)
-		If(numtype(inputWave[i]) == 2) 
-			continue
+	
+	numCols = DimSize(inputWave,1)
+	Make/FREE/N=(numCols) angles,dsi_cols
+	If(DimSize(angles,0) == 0)
+		numCols += 1
+		Redimension/N=(numCols) angles,dsi_cols
+	EndIf
+	angles = 0
+	
+	For(j=0;j<numCols;j+=1)
+		//loop through each column of the input wave, in case there are multiple tuning curves, one per column
+	
+		//get data from each column of input wave
+		Make/FREE/N=(DimSize(inputWave,0)) data
+		data[][0] = inputWave[p][j]
+		
+		vSumX = 0
+		vSumY = 0
+		totalSignal = 0
+		
+		For(i=0;i<numAngles;i+=1)
+			If(numtype(data[i]) == 2) 
+				continue
+			EndIf
+			vSumX += data[i]*cos(angleWave[i]*pi/180)
+			vSumY += data[i]*sin(angleWave[i]*pi/180)
+			totalSignal += data[i]
+		EndFor
+	
+		Variable vRadius = sqrt(vSumX^2 + vSumY^2)
+		Variable vAngle = -atan2(vSumY,vSumX)*180/pi
+		Variable	DSI = vRadius/totalSignal
+		
+		If(vAngle < 0)
+			vAngle +=360
+		Endif
+		
+		vAngle = 360 - vAngle
+		
+		angles[j] = vAngle
+		dsi_cols[j] = DSI
+		
+		If(doPrint)
+			print "vAngle =",vAngle,"\r  vRadius =",vRadius,"\r  DSI =",DSI	
 		EndIf
-		vSumX += inputWave[i]*cos(angleWave[i]*pi/180)
-		vSumY += inputWave[i]*sin(angleWave[i]*pi/180)
-		totalSignal += inputWave[i]
+		
 	EndFor
 	
-	Variable vRadius = sqrt(vSumX^2 + vSumY^2)
-	Variable vAngle = -atan2(vSumY,vSumX)*180/pi
-	Variable	DSI = vRadius/totalSignal
-	
-	If(vAngle < 0)
-		vAngle +=360
-	Endif
-	
-	vAngle = 360 - vAngle
-	
-	If(doPrint)
-		print "vAngle =",vAngle,"\r  vRadius =",vRadius,"\r  DSI =",DSI	
-	EndIf
-	
 	If(cmpstr(returnItem,"vAngle") == 0)
+		Make/O/N=(DimSize(inputWave,1)) vAng_columns
+		Wave vAng_cols = vAng_columns
+		vAng_cols = angles
+		
+		Make/O/N=(DimSize(inputWave,1)) vDSI_columns
+		Wave vDSI_cols = vDSI_columns
+		vDSI_cols = dsi_cols
+		
 		return vAngle
 	ElseIf(cmpstr(returnItem,"vRadius") == 0)
 		return vRadius
 	ElseIf(cmpstr(returnItem,"DSI") == 0)
+		Make/O/N=(DimSize(inputWave,1)) vDSI_columns
+		Wave vDSI_cols = vDSI_columns
+		vAng_cols = dsi_cols
 		return DSI
 	EndIf
 	
