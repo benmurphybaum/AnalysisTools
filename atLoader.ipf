@@ -64,7 +64,7 @@ End
 //Control menu
 Menu "CommandMenu",contextualMenu
 		
-		SubMenu "Wave Tools"
+	SubMenu "Wave Tools"
 		AddSubMenu("Wave Tools"),""
 	End
 	
@@ -75,6 +75,80 @@ Menu "CommandMenu",contextualMenu
 	
 	AddSubMenu("Main"),""
 End
+
+Function/S ExProcMenuCategories(menuItem)
+	String menuItem
+	String categories = ""
+	String selection = ""
+	Variable i
+	
+	String/G root:Packages:analysisTools:extFuncList
+	SVAR extFuncList = root:Packages:analysisTools:extFuncList
+	
+	FindExternalModules()
+	SVAR fileList = root:Packages:analysisTools:fileList
+	
+	extFuncList = getExternalFunctions(fileList)
+	
+	//Sub Menu Categories
+	categories += "||Wave Ops:"
+	categories += "fillDTableColumn;NewDataFolder;RemoveZeroBuffer;RenameWave;Concatenate;RegisterScaling;"
+	
+	////////////////
+	categories += "||Tuning Curves:"
+	categories += "DSplot_Spikes;DSplot_Integrate;DSplot_Peak;angularStats;tuning_quartiles;NameByPD;thresholdDS;"
+	
+	////////////////
+	categories += "||Image Analysis:"
+	categories += "Rotate_Image;AnalyzeParticles;annotateComputations;nearestNeighborStats;computationByDistance;tAvgByDist;"
+	categories += "annotateCrossings;distanceToCrossing;Colocalize;pixelPerROI;modelBranchVar;"
+
+	///////////////
+	categories += "||Correlation Analysis:"
+	categories += "VmCorr;correlationMatrix;SpatialCov;"
+	
+	///////////////
+	categories += "||Misc:"
+	
+	//put all remaining exernal functions in the miscellaneous functions submenu
+	For(i=0;i<ItemsInList(extFuncList,";");i+=1)
+		String theFunction = StringFromList(i,extFuncList,";")
+		If(!stringmatch(categories,"*" + theFunction + "*"))
+			categories += theFunction + ";"
+		EndIf
+	EndFor
+	
+	categories += "PCA;gaussWidth;Dispersion;Peak;GetPeakTimes;peakCV;CofMass_normalize;ModelThreshold;"
+	
+	selection = StringByKey(menuItem,categories,":","||")
+	return selection
+End
+
+
+//External Procedures menu definitions
+Menu "ExProcMenu",contextualMenu
+	SubMenu "Wave Ops"
+		ExProcMenuCategories("Wave Ops")
+	End
+	
+	SubMenu "Tuning Curves"
+		ExProcMenuCategories("Tuning Curves")
+	End
+	
+	SubMenu "Image Analysis"
+		ExProcMenuCategories("Image Analysis")
+	End
+	
+	SubMenu "Correlation Analysis"
+		ExProcMenuCategories("Correlation Analysis")
+	End
+	
+	SubMenu "Misc"
+		ExProcMenuCategories("Misc")
+	End
+End
+
+
 
 //test shortcut handler
 //Works in tandem with assignShortcuts()
@@ -193,6 +267,12 @@ Function/S handleShortcut()
 	
 	Button AT_CommandPop win=analysis_tools,title = "\\JL▼    " + currentCmd
 	DrawText/W=analysis_tools 15,53,"Commands:"
+	ControlInfo/W=analysis_tools AT_CommandPop
+						
+	If(!cmpstr(currentCmd,"External Function"))
+		DrawText/W=analysis_tools 23,84,"Functions:"
+	EndIf
+
 End
 
 
@@ -402,6 +482,10 @@ Function LoadAnalysisSuite([left,top])
 	SVAR currentCmd = root:Packages:analysisTools:currentCmd
 	//currentCmd = StringFromList(0,cmdList,";")
 	currentCmd = "External Function"
+	
+	String/G root:Packages:analysisTools:currentExtCmd
+	SVAR currentExtCmd = root:Packages:analysisTools:currentExtCmd
+	currentExtCmd = "NewDataFolder"
 	
 	//For the Operation command and wave matching
 	String/G root:Packages:analysisTools:waveMatchStr
@@ -784,7 +868,11 @@ Function LoadAnalysisSuite([left,top])
 	PopUpMenu cleanDeskPop win=analysis_tools,pos={16,70},fsize=12,size={140,20},title="Option",value="Hide All;Hide Layouts/Kill Rest;Kill All",disable=1
 	
 	//For External Functions
-	PopUpMenu extFuncPopUp win=analysis_tools,pos={21,67},size={150,200},title="Functions:",fSize=12,disable=1,value=#"root:Packages:analysisTools:extFuncList",proc=atPopProc
+	//PopUpMenu extFuncPopUp win=analysis_tools,pos={21,67},size={150,200},title="Functions:",fSize=12,disable=1,value=#"root:Packages:analysisTools:extFuncList",proc=atPopProc
+	
+	Button extFuncPopUp win=analysis_tools,pos={83,66},size={125,20},fsize=12,proc=atButtonProc,title="\\JL▼   " + currentExtCmd,disable=1
+	DrawText/W=analysis_tools 23,84,"Functions:"
+	
 	
 	String/G root:Packages:analysisTools:DataSets:DSNames
 	SVAR DSNames = root:Packages:analysisTools:DataSets:DSNames
@@ -1225,8 +1313,9 @@ Function ChangeControls(currentCmd,prevCmd)
 			break
 		case "External Function":
 			SVAR ctrlList = root:Packages:analysisTools:ctrlList_extFunc
-			ControlInfo/W=analysis_tools extFuncPopUp
-			ResolveFunctionParameters("AT_" + S_Value)
+			SVAR currentExtCmd = root:Packages:analysisTools:currentExtCmd
+			//ControlInfo/W=analysis_tools extFuncPopUp
+			ResolveFunctionParameters("AT_" + currentExtCmd)
 			break	
 		case "Run Cmd Line":
 			SVAR ctrlList = root:Packages:analysisTools:ctrlList_runCmdLine
@@ -1538,8 +1627,9 @@ Function ChangeControls(currentCmd,prevCmd)
 			CheckBox ratioCheck,win=analysis_tools,pos={90,59}
 			break
 		case "External Function":			
-			ControlInfo/W=analysisTools extFuncPopUp
-			ResolveFunctionParameters("AT_" + S_Value)
+			//ControlInfo/W=analysisTools extFuncPopUp
+			SVAR currentExtCmd = root:Packages:analysisTools:currentExtCmd
+			ResolveFunctionParameters("AT_" + currentExtCmd)
 			PopUpMenu extFuncDS win=analysis_tools,pos={21,100}
 			ListBox extFuncDSListBox win=analysis_tools,pos={180,121}
 			break
@@ -1746,8 +1836,9 @@ Function/S getControlList(command)
 			break
 		case "External Function":
 			SVAR ctrlList = root:Packages:analysisTools:ctrlList_extFunc
-			ControlInfo/W=analysis_tools extFuncPopUp
-			ResolveFunctionParameters("AT_" + S_Value)
+			SVAR currentExtCmd = root:Packages:analysisTools:currentExtCmd
+			//ControlInfo/W=analysis_tools extFuncPopUp
+			ResolveFunctionParameters("AT_" + currentExtCmd)
 			break	
 		case "Run Cmd Line":
 			SVAR ctrlList = root:Packages:analysisTools:ctrlList_runCmdLine

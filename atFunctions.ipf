@@ -1934,7 +1934,7 @@ Function filterROI()
 					WaveStats/Q/R=(pkStart,pkEnd) theWave
 					signal = V_max // incorporates both peak and average over the time interval
 					
-					snr = (signal^2)/(noise^2)
+					snr = signal/noise
 					
 					//Doesn't reach threshold
 					If(snr > roiThreshold)
@@ -6635,21 +6635,24 @@ Function VectorSum3(inputWave,doPrint,returnItem,[scaled,angleWave])
 	EndFor
 	
 	If(cmpstr(returnItem,"vAngle") == 0)
-		Make/O/N=(DimSize(inputWave,1)) vAng_columns
-		Wave vAng_cols = vAng_columns
-		vAng_cols = angles
+		If(DimSize(inputWave,1) > 0)
+			Make/O/N=(DimSize(inputWave,1)) vAng_columns
+			Wave vAng_cols = vAng_columns
+			vAng_cols = angles
 		
-		Make/O/N=(DimSize(inputWave,1)) vDSI_columns
-		Wave vDSI_cols = vDSI_columns
-		vDSI_cols = dsi_cols
-		
+//			Make/O/N=(DimSize(inputWave,1)) vDSI_columns
+//			Wave vDSI_cols = vDSI_columns
+//			vDSI_cols = dsi_cols
+		EndIf
 		return vAngle
 	ElseIf(cmpstr(returnItem,"vRadius") == 0)
 		return vRadius
 	ElseIf(cmpstr(returnItem,"DSI") == 0)
-		Make/O/N=(DimSize(inputWave,1)) vDSI_columns
-		Wave vDSI_cols = vDSI_columns
-		vAng_cols = dsi_cols
+		If(DimSize(inputWave,1) > 0)
+			Make/O/N=(DimSize(inputWave,1)) vDSI_columns
+			Wave vDSI_cols = vDSI_columns
+			vAng_cols = dsi_cols
+		EndIf
 		return DSI
 	EndIf
 	

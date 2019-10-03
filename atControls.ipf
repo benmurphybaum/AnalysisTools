@@ -13,6 +13,8 @@ Function atButtonProc(ba) : ButtonControl
 	SVAR currentCmd = root:Packages:analysisTools:currentCmd
 	SVAR prevCmd = root:Packages:analysisTools:prevCmd
 	
+	SVAR currentExtCmd = root:Packages:analysisTools:currentExtCmd
+	
 	//Parameters
 	NVAR Gnumtrials = root:Packages:analysisTools:Gnumtrials
 	NVAR Gbatchsize = root:Packages:analysisTools:Gbatchsize
@@ -75,8 +77,32 @@ Function atButtonProc(ba) : ButtonControl
 					NVAR currentTab = root:Packages:analysisTools:currentTab
 					If(currentTab == 1)
 						DrawText/W=analysis_tools 15,53,"Commands:"
+						
+						If(!cmpstr(currentCmd,"External Function"))
+							DrawText/W=analysis_tools 23,84,"Functions:"
+						EndIf
 					EndIf
 			
+					break
+				case "ExtFuncPopUp":
+					PopUpContextualMenu/C=(83,86)/N "ExProcMenu"
+					//handle submenu selection
+					popStr = S_Selection
+					popNum = V_flag
+					
+					//no selection
+					If(V_flag == 0 || V_flag == -1)
+						break
+					EndIf
+					
+					currentExtCmd = popStr
+					
+					Button ExtFuncPopUp win=analysis_tools,title="\\JL▼    " + currentExtCmd
+					
+					KillExtParams()
+					ResolveFunctionParameters("AT_" + currentExtCmd)
+					recallExtFuncValues(currentExtCmd)
+					
 					break
 				case "AT_RunCmd":
 					//ControlInfo/W=analysis_tools AT_CommandPop
@@ -357,8 +383,9 @@ Function atButtonProc(ba) : ButtonControl
 					endswitch
 					break
 				case "extFuncHelp":
-					ControlInfo/W=analysis_tools extFuncPopUp
-					displayExtFuncHelp(S_Value)
+					SVAR currentExtCmd = root:Packages:analysisTools:currentExtCmd
+					//ControlInfo/W=analysis_tools extFuncPopUp
+					displayExtFuncHelp(currentExtCmd)
 					break
 				case "ROISegmentButton":
 					ControlInfo/W=analysis_tools maskListPopUp
@@ -1085,11 +1112,11 @@ Function atPopProc(pa) : PopupMenuControl
 					popStr = pa.popStr
 					SetVariable operation win=analysis_tools,value=_STR:popStr	
 					break
-				case "extFuncPopUp":
-					KillExtParams()
-					ResolveFunctionParameters("AT_" + pa.popStr)
-					recallExtFuncValues(pa.popStr)
-					break
+//				case "extFuncPopUp":
+//					KillExtParams()
+//					ResolveFunctionParameters("AT_" + pa.popStr)
+//					recallExtFuncValues(pa.popStr)
+//					break
 				case "extFuncDS":
 					SetExtFuncMenus(pa.popStr)
 					SVAR wsDims = root:Packages:analysisTools:DataSets:wsDims
@@ -1100,6 +1127,10 @@ Function atPopProc(pa) : PopupMenuControl
 						drawSyntaxInfo()
 					EndIf
 					DrawText/W=analysis_tools 15,53,"Commands:"
+										
+					If(!cmpstr(currentCmd,"External Function"))
+						DrawText/W=analysis_tools 23,84,"Functions:"
+					EndIf
 					break
 			endswitch
 			break
@@ -1186,9 +1217,10 @@ Function switchTabs(newTab)
 				
 				If(stringmatch("External Function",currentCmd))
 					//refresh the values in the external parameter variables
-					ControlInfo/W=analysis_tools extFuncPopUp
-					ResolveFunctionParameters("AT_" + S_Value)
-					recallExtFuncValues(S_Value)
+					//ControlInfo/W=analysis_tools extFuncPopUp
+					SVAR currentExtCmd = root:Packages:analysisTools:currentExtCmd
+					ResolveFunctionParameters("AT_" + currentExtCmd)
+					recallExtFuncValues(currentExtCmd)
 				EndIf
 			
 			EndIf
@@ -1201,6 +1233,10 @@ Function switchTabs(newTab)
 			DSNames = "--None--;--Scan List--;--Item List--;" + textWaveToStringList(dataSetNames,";")
 			
 			DrawText/W=analysis_tools 15,53,"Commands:"
+						
+			If(!cmpstr(currentCmd,"External Function"))
+				DrawText/W=analysis_tools 23,84,"Functions:"
+			EndIf
 			break
 	endswitch
 End
@@ -1760,15 +1796,17 @@ End
 //Called by external procedures parameters 
 Function atExtParamPopProc(sva) : SetVariableControl
 	STRUCT WMSetVariableAction &sva
-
+	SVAR currentExtCmd = root:Packages:analysisTools:currentExtCmd
+	
 	switch( sva.eventCode )
 		case 1: // mouse up
 		case 2: // Enter key
 		case 3: // Live update
 			Variable dval = sva.dval
 			String sval = sva.sval
-			ControlInfo/W=analysis_tools extFuncPopUp
-			UpdateExtFuncValues(S_Value)
+			
+			//ControlInfo/W=analysis_tools extFuncPopUp
+			UpdateExtFuncValues(currentExtCmd)
 			break
 		case -1: // control being killed
 			break

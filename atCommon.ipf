@@ -33,9 +33,11 @@ Function CheckExternalFunctionControls(currentCmd)
 	DSNames = "--None--;--Scan List--;--Item List--;" + textWaveToStringList(dataSetNames,";")
 
 	KillExtParams()
-	ControlInfo/W=analysis_tools extFuncPopUp
-	ResolveFunctionParameters("AT_" + S_Value)
-	recallExtFuncValues(S_Value)
+	SVAR currentExtCmd = root:Packages:analysisTools:currentExtCmd
+	//ControlInfo/W=analysis_tools extFuncPopUp
+	ResolveFunctionParameters("AT_" + currentExtCmd)
+	recallExtFuncValues(currentExtCmd)
+	
 	//Toggle the channel pop up menu
 	ControlInfo/W=analysis_tools extFuncDS
 	If(cmpstr(S_Value,"--Scan List--") == 0)
@@ -3746,8 +3748,9 @@ Function/S SetExtFuncCmd()
 	SVAR builtInCmdStr = root:Packages:analysisTools:runCmdStr
 	
 	//External function
-	ControlInfo/W=analysis_tools extFuncPopUp
-	String theFunction = S_Value
+	//ControlInfo/W=analysis_tools extFuncPopUp
+	SVAR currentExtCmd = root:Packages:analysisTools:currentExtCmd
+	String theFunction = currentExtCmd
 	runCmdStr = "AT_" + theFunction + "("
 
 	For(i=0;i<numExtParams;i+=1)
