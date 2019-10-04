@@ -1395,7 +1395,7 @@ Function filterByWaveSetNumber(ds,value)
 		waveSetSize = str2num(StringFromList(j,wsDims,";"))
 		
 		//start and end indices of each waveset, start is high, end is low.
-		endPt = totalSize - (numWaveSets - j)*waveSetSize -  (numWaveSets - (j + 1)) * offset //offset is only used when there is more than 1 waveset
+		endPt = tableMatch("*WSN*" + num2str(j) + "*",ds) + 1
 		
 		If(!StringMatch(value,"*," + num2str(j) + ",*"))
 			DeletePoints endPt-1,waveSetSize+1,ds
