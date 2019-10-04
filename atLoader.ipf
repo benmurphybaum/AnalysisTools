@@ -118,8 +118,6 @@ Function/S ExProcMenuCategories(menuItem)
 		EndIf
 	EndFor
 	
-	categories += "PCA;gaussWidth;Dispersion;Peak;GetPeakTimes;peakCV;CofMass_normalize;ModelThreshold;"
-	
 	selection = StringByKey(menuItem,categories,":","||")
 	return selection
 End
