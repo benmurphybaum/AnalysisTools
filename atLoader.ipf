@@ -253,6 +253,7 @@ Function/S handleShortcut()
 			case "Mask Image":
 			case "Dynamic ROI":
 			case "Error":
+			case "Move To Folder":
 			case "Kill Waves":
 			case "Run Cmd Line":
 			case "Duplicate Rename":
