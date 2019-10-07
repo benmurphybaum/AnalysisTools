@@ -6528,7 +6528,13 @@ Function moveToFolder()
 	
 	For(i=0;i<numWaves;i+=1)
 		String folderPath = theFolder
-		Wave theWave = $StringFromList(i,theWaveList,";")
+		String theWaveName = StringFromList(i,theWaveList,";")
+		Wave theWave = $theWaveName
+		
+		If(!WaveExists(theWave))
+			continue
+		EndIf
+		
 		String wavePath = GetWavesDataFolder(theWave,1)
 		SetDataFolder $wavePath
 		

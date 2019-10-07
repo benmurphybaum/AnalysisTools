@@ -1192,7 +1192,8 @@ Function switchTabs(newTab)
 			DrawLine/W=analysis_tools 220,471,230,471
 			SetDrawEnv/W=analysis_tools fsize=9
 			DrawText/W=analysis_tools 80,464,"DS Name"
-			
+			SetDrawEnv/W=analysis_tools fsize=9
+			DrawText/W=analysis_tools 80,484,"Grouping"
 			SetDrawLayer/W=analysis_tools ProgBack
 			
 			updateWSDimText()
@@ -1871,14 +1872,38 @@ Function atClickHook(s)
 			break
 		case 3:
 		//mouse down
-			Wave/T dsNames = root:Packages:analysisTools:DataSets:dataSetNames
-			String names = textWaveToStringList(dsNames,";")
+			
 			
 			GetMouse/W=analysis_tools
 			If(V_left > 78 && V_left < 124 && V_top > 450 && V_top < 467)
+				//DS Name click
+				Wave/T dsNames = root:Packages:analysisTools:DataSets:dataSetNames
+				String names = textWaveToStringList(dsNames,";")
 				PopupContextualMenu/C=(s.MouseLoc.h, s.MouseLoc.v) names
 				If(V_flag)
 					SetVariable dataSetName win=analysis_tools,value=_STR:S_selection
+				EndIf
+			ElseIf(V_left > 78 && V_left < 124 && V_top > 469 && V_top < 486)
+				//Grouping click
+				String groupingStr = "Block;Stride;Wave Set Index;Wave Set Num"
+				PopupContextualMenu/C=(s.MouseLoc.h, s.MouseLoc.v) groupingStr
+				If(V_flag)
+					ControlInfo/W=analysis_tools waveGrouping
+					strswitch(S_selection)
+						case "Block":
+							String returnStr = S_Value + "/B="
+							break
+						case "Stride":
+							returnStr = S_Value + "/S="
+							break
+						case "Wave Set Index":
+							returnStr = S_Value + "/WSI="
+							break
+						case "Wave Set Num":
+							returnStr = S_Value + "/WSN="
+							break
+					endswitch
+					SetVariable waveGrouping win=analysis_tools,value=_STR:returnStr
 				EndIf
 			EndIf
 			break

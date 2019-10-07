@@ -839,7 +839,9 @@ Function LoadAnalysisSuite([left,top])
 	Button matchStraddOR win=analysis_tools,pos={202,38},size={22,20},title="OR",fsize=8,disable=1,proc=atButtonProc
 	Button notMatchStraddOR win=analysis_tools,pos={202,58},size={22,20},title="OR",fsize=8,disable=1,proc=atButtonProc
 	helpNote = "Organize the wave list into wave sets by the indicated underscore position.\rUses zero offset; -2 concatenates into a single wave set"
-	SetVariable waveGrouping win=analysis_tools,pos={80,471},size={130,20},title="Grouping",disable=1,value=_STR:"",help={helpNote},proc=atSetVarProc
+	SetVariable waveGrouping win=analysis_tools,pos={124,471},size={85,20},title="",disable=1,value=_STR:"",help={helpNote},proc=atSetVarProc
+	SetDrawEnv/W=analysis_tools fsize=9
+	DrawText/W=analysis_tools 80,484,"Grouping"
 	
 	SetVariable prefixGroup win=analysis_tools,pos={10,491},size={30,20},title="",disable=1,value=_STR:"",help={"Filter the wave list by the 1st underscore position"},proc=atSetVarProc
 	SetVariable groupGroup win=analysis_tools,pos={40,491},size={45,20},title=" __",disable=1,value=_STR:"",help={"Filter the wave list by the 2nd underscore position"},proc=atSetVarProc
@@ -1645,6 +1647,8 @@ Function ChangeControls(currentCmd,prevCmd)
 			
 			SetDrawEnv/W=analysis_tools fsize=9
 			DrawText/W=analysis_tools 80,464,"DS Name"
+			SetDrawEnv/W=analysis_tools fsize=9
+			DrawText/W=analysis_tools 80,484,"Grouping"
 			SetDrawLayer/W=analysis_tools ProgBack
 			
 			break
