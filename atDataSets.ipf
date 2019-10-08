@@ -902,7 +902,7 @@ End
 Function checkWaveSets(ds)
 	Wave/T/Z ds 
 	
-	String dataSetName = StringFromList(1,NameOfWave(ds),"_")
+	String dataSetName = RemoveListItem(0,NameOfWave(ds),"_")
 	Wave/T ogds = $("root:Packages:analysisTools:DataSets:ogDS_" + dataSetName)
 	
 	Variable i,pos1,pos2,index,count
@@ -1041,7 +1041,7 @@ Function setWaveGrouping(original,ds)
 	String term,name,matchName,matchTerm,dataSetName
 	
 	//Get data set name
-	dataSetName = StringFromList(1,NameOfWave(ds),"_")
+	dataSetName = RemoveListItem(0,NameOfWave(ds),"_")
 	
 	//reset the wave groupings to the original ungrouped state
 	Redimension/N=(DimSize(original,0)) ds
@@ -1106,8 +1106,9 @@ Function sortByWaveGroup(original,ds,value)
 	String term,name,matchName,matchTerm,dataSetName
 	
 	//Get data set name
-	dataSetName = StringFromList(1,NameOfWave(ds),"_")
-
+	//dataSetName = RemoveListItem(0,NameOfWave(ds),"_")
+	dataSetName = RemoveListItem(0,NameOfWave(ds),"_")
+	
 	numGroupings = ItemsInList(value,",")
 	numWaves = DimSize(ds,0)
 	
@@ -1333,7 +1334,7 @@ Function filterByWaveSetIndex(ds,value)
 	String wsDims = "",waveEntry = ""
 	
 	//Get data set name
-	String dataSetName = StringFromList(1,NameOfWave(ds),"_")
+	String dataSetName = RemoveListItem(0,NameOfWave(ds),"_")
 	
 	value = "," + value//put in starting comma for matching purposes
 	
@@ -1377,7 +1378,7 @@ Function filterByWaveSetNumber(ds,value)
 	String wsDims = "",waveEntry = ""
 	
 	//Get data set name
-	String dataSetName = StringFromList(1,NameOfWave(ds),"_")
+	String dataSetName = RemoveListItem(0,NameOfWave(ds),"_")
 	
 	value = "," + value//put in starting comma for matching purposes
 	
@@ -1409,7 +1410,7 @@ Function filterByBlockSize(original,ds,value)
 	String value
 	
 	//Get data set name
-	String dataSetName = StringFromList(1,NameOfWave(ds),"_")
+	String dataSetName = RemoveListItem(0,NameOfWave(ds),"_")
 	
 	Variable waveSetSize,numWaveSets,blockSize,nextBlock,count,totalCount,i,j,numWaves,index
 	
@@ -1470,7 +1471,7 @@ Function filterByStride(original,ds,value)
 	Variable nextStride,numStrides,j,k,i,count,totalCount,waveSetSize,numWaveSets,index
 	
 	//Get data set name
-	String dataSetName = StringFromList(1,NameOfWave(ds),"_")
+	String dataSetName = RemoveListItem(0,NameOfWave(ds),"_")
 	
 	numWaves = DimSize(original,0)
 	

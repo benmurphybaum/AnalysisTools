@@ -533,6 +533,10 @@ Function atButtonProc(ba) : ButtonControl
 				case "OpenABF2Loader":
 					InitializeABFPanel()
 					break
+				case "goToProcButton":
+					//go to procedure window of the selected function
+					goToProc()
+					break
 			endswitch
 			break
 		case -1: // control being killed
@@ -1872,8 +1876,7 @@ Function atClickHook(s)
 			break
 		case 3:
 		//mouse down
-			
-			
+	
 			GetMouse/W=analysis_tools
 			If(V_left > 78 && V_left < 124 && V_top > 450 && V_top < 467)
 				//DS Name click
@@ -1883,9 +1886,10 @@ Function atClickHook(s)
 				If(V_flag)
 					SetVariable dataSetName win=analysis_tools,value=_STR:S_selection
 				EndIf
+				hookResult = 1
 			ElseIf(V_left > 78 && V_left < 124 && V_top > 469 && V_top < 486)
 				//Grouping click
-				String groupingStr = "Block;Stride;Wave Set Index;Wave Set Num"
+				String groupingStr = "Block;Stride;Wave Set Index;Wave Set Num;Folder;Concatenate;"
 				PopupContextualMenu/C=(s.MouseLoc.h, s.MouseLoc.v) groupingStr
 				If(V_flag)
 					ControlInfo/W=analysis_tools waveGrouping
@@ -1902,10 +1906,20 @@ Function atClickHook(s)
 						case "Wave Set Num":
 							returnStr = S_Value + "/WSN="
 							break
+						case "Folder":
+							returnStr = S_Value + "/WG=-1"
+							break
+						case "Concatenate":
+							returnStr = S_Value + "/WG=-2"
+							break
 					endswitch
 					SetVariable waveGrouping win=analysis_tools,value=_STR:returnStr
 				EndIf
+				hookResult = 1
+			Else
+				hookResult = 0 //Igor handles click events at all other locations on the panel
 			EndIf
+			
 			break
 		case 5:
 		//mouse up

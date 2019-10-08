@@ -5296,9 +5296,18 @@ Function AverageWaves()
 	ControlInfo/W=analysis_tools outputSuffixAvg
 	String suffix = S_Value
 	
+	ControlInfo/W=analysis_tools replaceSuffixCheck
+	Variable replaceSuffix = V_Value
+	
 	Wave theWave = $StringFromList(0,theWaveList,";")
 	If(strlen(suffix))
-		String outWaveName = outFolder + ":" + NameOfWave(theWave) + "_" + suffix
+		If(replaceSuffix)
+			String name = NameOfWave(theWave)
+			name = RemoveListItem(ItemsInList(name,"_") - 1,name,"_")
+			String outWaveName = outFolder + ":" + name + suffix
+		Else
+			outWaveName = outFolder + ":" + NameOfWave(theWave) + "_" + suffix
+		EndIf
 	Else
 		outWaveName = outFolder + ":" + NameOfWave(theWave)
 		
@@ -5383,14 +5392,23 @@ Function ErrorWaves()
 	ControlInfo/W=analysis_tools outputSuffixErr
 	String suffix = S_Value
 	
+	ControlInfo/W=analysis_tools replaceSuffixCheck
+	Variable replaceSuffix = V_Value
+	
 	Wave theWave = $StringFromList(0,theWaveList,";")
 	
 	If(strlen(suffix))
-		String outWaveName = outFolder + ":" + NameOfWave(theWave) + "_" + suffix
+		If(replaceSuffix)
+			String name = NameOfWave(theWave)
+			name = RemoveListItem(ItemsInList(name,"_") - 1,name,"_")
+			String outWaveName = outFolder + ":" + name + suffix
+		Else
+			outWaveName = outFolder + ":" + NameOfWave(theWave) + "_" + suffix
+		EndIf
 	Else
 		outWaveName = outFolder + ":" + NameOfWave(theWave)
 		
-		//ensure you're not overwriting the first wave in the datat set
+		//ensure you're not overwriting the first wave in the data set
 		If(!cmpstr(StringFromList(0,theWaveList,";"),outWaveName))
 			outWaveName = outFolder + ":" + NameOfWave(theWave) + "_" + error
 		EndIf
@@ -6557,6 +6575,14 @@ Function moveToFolder()
 		EndIf
 		
 		folderPath += ":" + NameOfWave(theWave)
+		
+		//kill existing wave in new location so it can be overwritten
+		Wave/Z existingWave = $folderPath
+		If(WaveExists(existingWave))
+			ReallyKillWaves(existingWave)
+		EndIf
+		
+		//move the wave to new location
 		MoveWave theWave,$folderPath
 	EndFor
 End
@@ -6663,3 +6689,50 @@ Function VectorSum3(inputWave,doPrint,returnItem,[scaled,angleWave])
 	EndIf
 	
 End Function
+
+Function polarMath2(pnt1,pnt2,degrad,op)
+	Variable pnt1,pnt2
+	String degrad,op
+	Variable angOut
+	
+	strswitch(op)
+		case "add":
+			angOut = pnt1 + pnt2
+			break
+		case "distance":
+			Variable x1,y1,x2,y2,D,A
+			 //linear distance between the points
+			
+			D = 2*pi*1*A/360
+			
+			If(!cmpstr(degrad,"deg"))
+				x1 = cos(pnt1 * pi/180)
+				y1 = sin(pnt1 * pi/180)
+				x2 = cos(pnt2 * pi/180)
+				y2 = sin(pnt2 * pi/180)
+				D = sqrt( (x2 - x1)^2 + (y2 - y1)^2 )
+				angOut = acos( (2 * (1^2) - D^2) / (2 * (1^2)) ) * 180/pi
+			Else
+				x1 = cos(pnt1)
+				y1 = sin(pnt1)
+				x2 = cos(pnt2)
+				y2 = sin(pnt2)
+				D = sqrt( (x2 - x1)^2 + (y2 - y1)^2 )
+				angOut = acos( (2 * (1^2) - D^2) / (2 * (1^2)) )
+			EndIf
+			break
+	endswitch
+	
+	strswitch(degrad)
+		case "deg":
+			angOut = (angOut > 360) ? (angOut - 360) : angOut
+			angOut = (angOut < 0) ? (angOut + 360) : angOut
+			break
+		case "rad":
+			angOut = (angOut > 2*pi) ? (angOut - 2*pi) : angOut
+			angOut = (angOut < 0) ? (angOut + 2*pi) : angOut
+			break
+	endswitch
+	
+	return angOut
+End

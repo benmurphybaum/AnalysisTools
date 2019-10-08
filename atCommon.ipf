@@ -38,6 +38,8 @@ Function CheckExternalFunctionControls(currentCmd)
 	ResolveFunctionParameters("AT_" + currentExtCmd)
 	recallExtFuncValues(currentExtCmd)
 	
+	Button goToProcButton win=analysis_tools,disable = 0
+	
 	//Toggle the channel pop up menu
 	ControlInfo/W=analysis_tools extFuncDS
 	If(cmpstr(S_Value,"--Scan List--") == 0)
@@ -47,6 +49,7 @@ Function CheckExternalFunctionControls(currentCmd)
 		Else
 			PopUpMenu extFuncChannelPop win=analysis_tools,fsize=12,title="CH",value="1;2",disable=0
 		EndIf
+		
 		ListBox extFuncDSListBox win=analysis_tools,disable=1
 		DrawAction/W=analysis_tools delete
 	ElseIf(cmpstr(S_Value,"--None--") == 0 || cmpstr(S_Value,"--Item List--") == 0)
@@ -3665,7 +3668,7 @@ Function ResolveFunctionParameters(theFunction)
 	
 	//control list will need updating when controls are added
 	SVAR ctrlList_extFunc = root:Packages:analysisTools:ctrlList_extFunc
-	ctrlList_extFunc = "extFuncPopUp;extFuncDS;extFuncChannelPop;extFuncDSListBox;extFuncHelp;"
+	ctrlList_extFunc = "extFuncPopUp;extFuncDS;extFuncChannelPop;extFuncDSListBox;extFuncHelp;goToProcButton;"
 	NVAR numExtParams = root:Packages:analysisTools:numExtParams
 	SVAR extParamTypes = root:Packages:analysisTools:extParamTypes
 	SVAR extParamNames = root:Packages:analysisTools:extParamNames
@@ -4484,4 +4487,27 @@ Function/S ReplaceListItem(index,listStr,separator,replaceWith)
 	listStr = AddListItem(replaceWith,listStr,separator,index)
 	
 	return listStr
+End
+
+//Navigates to the procedure window for the selected external function 
+Function goToProc()
+	SVAR fileList = root:Packages:analysisTools:fileList //list of external .ipf files
+	Variable i,j,numFiles
+	String theFile,theFunction,theList = ""
+	
+	SVAR currentExtCmd = root:Packages:analysisTools:currentExtCmd
+	theFunction = "AT_" + currentExtCmd
+	
+	numFiles = ItemsInList(fileList,";")
+	
+	For(j=0;j<numFiles;j++)
+		For(i=0;i<numFiles;i+=1)
+			theFile = StringFromList(i,fileList,";")
+			theList = FunctionList("*", ";","WIN:" + theFile)
+			
+			If(stringmatch(theList,"*" + theFunction + "*"))
+				DisplayProcedure/W=theFile theFunction
+			EndIf
+		EndFor	
+	EndFor	
 End

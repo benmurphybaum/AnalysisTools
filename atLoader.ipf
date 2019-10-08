@@ -711,7 +711,8 @@ Function LoadAnalysisSuite([left,top])
 	//Average
 	SetVariable outFolder win=analysis_tools,pos={20,63},size={175,20},title="Output Folder:",value=_STR:"",disable=1
 	SetVariable outputSuffixAvg win=analysis_tools,pos={23,83},size={150,20},title="Output Suffix:",value=_STR:"",disable=1
-
+	CheckBox replaceSuffixCheck win=analysis_tools,pos={180,83},size={40,20},title="Replace",value=1,disable=1
+	
 	//Errors
 	PopUpMenu errType win=analysis_tools,pos={20,120},size={50,20},title="Type",value="sem;sdev",disable=1
 	SetVariable outputSuffixErr win=analysis_tools,pos={23,83},size={150,20},title="Output Suffix:",value=_STR:"",disable=1
@@ -873,7 +874,7 @@ Function LoadAnalysisSuite([left,top])
 	
 	Button extFuncPopUp win=analysis_tools,pos={83,66},size={125,20},fsize=12,proc=atButtonProc,title="\\JL▼   " + currentExtCmd,disable=1
 	DrawText/W=analysis_tools 23,84,"Functions:"
-	
+	Button goToProcButton win=analysis_tools,pos={210,66},size={40,20},title="GoTo",proc=atButtonProc,disable=1
 	
 	String/G root:Packages:analysisTools:DataSets:DSNames
 	SVAR DSNames = root:Packages:analysisTools:DataSets:DSNames
@@ -1012,12 +1013,12 @@ Function CreateControlLists(cmdList)
 	//Average
 	String/G root:Packages:analysisTools:ctrlList_average
 	SVAR ctrlList_average = root:Packages:analysisTools:ctrlList_average
-	ctrlList_average = "extFuncDS;extFuncChannelPop;extFuncDSListBox;outFolder;outputSuffixAvg;"
+	ctrlList_average = "extFuncDS;extFuncChannelPop;extFuncDSListBox;outFolder;outputSuffixAvg;replaceSuffixCheck;"
 	
 	//Error
 	String/G root:Packages:analysisTools:ctrlList_error
 	SVAR ctrlList_error = root:Packages:analysisTools:ctrlList_error
-	ctrlList_error = "extFuncDS;extFuncChannelPop;extFuncDSListBox;errType;outFolder;outputSuffixErr;"
+	ctrlList_error = "extFuncDS;extFuncChannelPop;extFuncDSListBox;errType;outFolder;outputSuffixErr;replaceSuffixCheck;"
 	
 	//PSTH
 	String/G root:Packages:analysisTools:ctrlList_psth
@@ -1155,7 +1156,7 @@ Function CreateControlLists(cmdList)
 	//For External Functions
 	String/G root:Packages:analysisTools:ctrlList_extFunc
 	SVAR ctrlList_extFunc = root:Packages:analysisTools:ctrlList_extFunc
-	ctrlList_extFunc = "extFuncPopUp;extFuncDS;extFuncChannelPop;extFuncDSListBox;extFuncHelp"
+	ctrlList_extFunc = "extFuncPopUp;extFuncDS;extFuncChannelPop;extFuncDSListBox;extFuncHelp;goToProcButton;"
 	
 	//Load PClamp
 	String/G root:Packages:analysisTools:ctrlList_loadPClamp
