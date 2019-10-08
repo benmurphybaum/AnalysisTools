@@ -1929,6 +1929,59 @@ Function atClickHook(s)
 	return hookResult 
 End
 
+Function ROI_mouseHook(s)
+	STRUCT WMWinHookStruct &s
+	Variable hookResult = 0
+	
+	SVAR roiTableName = root:var:roiTableName
+	SVAR graphName = root:var:graphName
+			
+	switch(s.eventCode)
+		case 0:
+		//handle activate
+			break
+		case 1:
+		//handle deactivate
+			break
+		case 4:
+		//mouse moved
+			
+			//index of the ROI wave that the mouse is hovering over
+			String info = TraceFromPixel(s.mouseLoc.h,s.mouseLoc.v,"WINDOW:" + graphName)
+		
+			Variable hitPoint = str2num(StringByKey("HITPOINT",info,":",";"))
+			
+			If(numType(hitPoint) == 2) //nan
+				SetDrawLayer/W=$graphName/K UserFront
+				break
+			EndIf
+			
+			Wave/T roiTable = $roiTableName
+			String ROIName = roiTable[hitPoint]
+			
+			String axis = AxisList(graphName)
+			
+			//pull up contextual text box showing the name of the ROI
+			SetDrawLayer/W=$graphName/K UserFront
+			//DrawAction/W=$graphName delete //kill existing draw text
+			SetDrawEnv/W=$graphName fsize=8,textrgb=(65500,0,65500),textxjust=1,xcoord=$StringFromList(1,axis,";"),ycoord=$StringFromList(0,axis,";")
+			DrawText/W=$graphName AxisValFromPixel(graphName,StringFromList(1,axis,";"),s.mouseLoc.h),AxisValFromPixel(graphName,StringFromList(0,axis,";"),s.mouseLoc.v),ROIName
+			hookResult = 1
+			break
+		case 11:
+		//keyboard input
+			switch(s.specialKeyCode)
+				case 204:
+					//remove the hook
+					SetDrawLayer/W=$graphName/K UserFront
+					SetWindow $graphName hook(ID_ROI_hook)=$""
+					break
+			endswitch
+			break
+	endswitch
+	return hookResult 
+End
+
 //Mouse hook function for line profile function
 Function getLineHook(s)
 	STRUCT WMWinHookStruct &s

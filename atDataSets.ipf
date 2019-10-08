@@ -664,6 +664,8 @@ Function GetNumWaveSets(dsName)
 	
 	If(isDataSet(dsName))
 		Wave/T ds = getDataSetWave(dsName=dsName)
+	ElseIf(stringmatch(dsName,"*None*") || stringmatch(dsName,"*Scan List*") || stringmatch(dsName,"*Item List*"))
+		return 1
 	Else
 		//If there is no valid wave set selected, just use the waves listed in the wave list table
 		Wave/T ds = root:Packages:analysisTools:AT_waveListTable_FullPath
