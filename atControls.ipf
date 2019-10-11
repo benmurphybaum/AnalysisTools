@@ -395,6 +395,14 @@ Function atButtonProc(ba) : ButtonControl
 				case "undoRegistration":
 					undoRegistration()
 					break
+				case "manualRegistration":
+					//set window hook for registering images with large differences
+					ControlInfo/W=analysis_tools manualReg_X
+					dx = V_Value
+					ControlInfo/W=analysis_tools manualReg_Y
+					dy = V_Value
+					manualRegistration(dx,dy)
+					break
 				case "equalizeDimensions":
 					EqualizeDimensions()
 					break

@@ -28,6 +28,9 @@ Function FindExternalModules()
 	SVAR fileList = root:Packages:analysisTools:fileList
 	
 	fileList = IndexedFile(IgorProcPath,-1,".ipf")//finds ipf files
+	If(!strlen(fileList))
+		fileList = ""
+	EndIf
 	InsertIncludes(fileList)
 End
 
@@ -37,7 +40,7 @@ Function InsertIncludes(fileList)
 	String fileList
 	Variable numFiles,i
 	String theFile
-	
+
 	numFiles = ItemsInList(fileList,";")
 	
 	For(i=0;i<numFiles;i+=1)
@@ -824,8 +827,9 @@ Function LoadAnalysisSuite([left,top])
 	//PopUpMenu testImagePopUp win=analysis_tools,bodywidth=175,pos={220,110},title="Test Image",disable=1,value=#"root:Packages:analysisTools:scanFolderList"
 	PopUpMenu testImageChMenu win=analysis_tools,pos={15,110},title="Registered Image",disable=1,value="ch1;ch2;Both;"
 	//PopUpMenu registrationTemplatePopUp win=analysis_tools,bodywidth=175,pos={220,135},title="Templates",disable=1,value=getWaveList("W_RegParams")
-	
-	
+	Button manualRegistration win=analysis_tools,size={71,20},pos={177,140},title="Manual",disable=1,proc=atButtonProc
+	SetVariable manualReg_X win=analysis_tools,size={50,20},pos={121,135},title="X",value=_NUM:0,disable=1
+	SetVariable manualReg_Y win=analysis_tools,size={50,20},pos={121,154},title="Y",value=_NUM:0,disable=1
 	//WaveList("W_RegParams",";","")
 	
 	//For Data Sets
@@ -1114,7 +1118,7 @@ Function CreateControlLists(cmdList)
 	//Register image (translation)
 	String/G root:Packages:analysisTools:ctrlList_registerImage
 	SVAR ctrlList_registerImage = root:Packages:analysisTools:ctrlList_registerImage
-	ctrlList_registerImage = "refImagePopUp;testImagePopUp;registrationTemplatePopUp;refImageChMenu;testImageChMenu;undoRegistration;"
+	ctrlList_registerImage = "refImagePopUp;testImagePopUp;registrationTemplatePopUp;refImageChMenu;testImageChMenu;undoRegistration;manualRegistration;manualReg_X;manualReg_Y;"
 	
 	//Vector Sum Map
 	String/G root:Packages:analysisTools:ctrlList_vectorSumMap

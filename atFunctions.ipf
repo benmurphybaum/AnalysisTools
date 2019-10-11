@@ -6736,3 +6736,50 @@ Function polarMath2(pnt1,pnt2,degrad,op)
 	
 	return angOut
 End
+
+
+//Manually registers images according to dx and dy, in pixels
+//Reference image is ignored here
+Function manualRegistration(xDelta,yDelta)
+	Variable xDelta,yDelta
+	SVAR scanListStr = root:Packages:twoP:examine:scanListStr
+	Variable i
+	
+	ControlInfo/W=analysis_tools testImageChMenu
+	String ch = S_Value
+	
+	For(i=0;i<ItemsInList(scanListStr,";");i+=1)
+		String theScan = StringFromList(i,scanListStr,";")
+		
+		Wave testImage = $("root:twoP_Scans:" + theScan + ":" + theScan + "_" + ch)
+		Variable theMean = mean(testImage)
+		Duplicate/O testImage,$("root:Packages:analysisTools:Registration:" + NameOfWave(testImage))
+			
+		If(xDelta < 0)
+			DeletePoints/M=0 0,-xDelta,testImage
+			InsertPoints/M=0 DimSize(testImage,0),-xDelta,testImage
+			//testImage[DimSize(testImage,0)+xDelta,DimSize(testImage,0)-1][] = testImage[p+xDelta][q]
+			//inserted points become noise around the mean signal
+			testImage[DimSize(testImage,0)+xDelta,DimSize(testImage,0)-1][] = theMean + gnoise(0.05*theMean)
+		ElseIf(xDelta > 0)
+			InsertPoints/M=0 0,xDelta,testImage
+			DeletePoints/M=0 DimSize(testImage,0)-xDelta,xDelta,testImage
+			//testImage[0,xDelta-1][] = testImage[p+xDelta][q]
+			testImage[0,xDelta-1][] = theMean + gnoise(0.05*theMean)
+		EndIf
+	
+		If(yDelta < 0)
+			DeletePoints/M=1 0,-yDelta,testImage
+			InsertPoints/M=1 DimSize(testImage,1),-yDelta,testImage
+			//testImage[][DimSize(testImage,1)+yDelta,DimSize(testImage,1)-1] = testImage[p][q+yDelta]
+			testImage[][DimSize(testImage,1)+yDelta,DimSize(testImage,1)-1] = theMean + gnoise(0.05*theMean)
+		ElseIf(yDelta > 0)
+			InsertPoints/M=1 0,yDelta,testImage
+			DeletePoints/M=1 DimSize(testImage,1)-yDelta,yDelta,testImage
+			//testImage[][0,yDelta-1] = testImage[p][q+yDelta]
+			testImage[][0,yDelta-1] = theMean + gnoise(0.05*theMean)
+		EndIf
+	
+	EndFor
+
+End
