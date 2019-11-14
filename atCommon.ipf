@@ -4485,6 +4485,7 @@ Function/S ReplaceListItem(index,listStr,separator,replaceWith)
 	
 	listStr = RemoveListItem(index,listStr,separator)
 	listStr = AddListItem(replaceWith,listStr,separator,index)
+	listStr = RemoveEnding(listStr,separator)
 	
 	return listStr
 End

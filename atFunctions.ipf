@@ -5506,8 +5506,9 @@ Function FlattenWave(inputWave)
 	FilterFIR/DIM=0/HI={0.006,0.01,101}/COEF coefs, filtered
 	Wave filterWave = filtered
 	inputWave = filterWave
-//	CurveFit/Q/M=2/W=0 poly_XOffset 10,inputWave/D=fitWave 	
-	//inputWave -= fitWave
+	
+	WaveStats/Q inputWave
+	inputWave -= V_avg
 //	Note inputWave,"Trend Fitted"
 	//KillWaves fitWave
 	
@@ -6344,6 +6345,12 @@ Function PSTH()
 	String waveNameList = getWaveNames()
 	numWaves = ItemsInList(waveNameList,";")
 	
+	//Make a wave to hold the total spike numbers for each waveset
+	Wave theWave = $StringFromList(0,waveNameList,";") //first wave
+	SetDataFolder GetWavesDataFolder(theWave,1)
+	Make/O/N=(numWaves) $ReplaceListItem(0,NameOfWave(theWave),"_","spkct")
+	Wave spkct = $ReplaceListItem(0,NameOfWave(theWave),"_","spkct")
+	
 	For(i=0;i<numWaves;i+=1)
 		Wave theWave = $StringFromList(i,waveNameList,";")
 		
@@ -6361,13 +6368,20 @@ Function PSTH()
 		
 		//get spike times
 		FindLevels/Q/EDGE=1/M=0.002/D=spktm theWave,threshold
+		spkct[i] = V_LevelsFound
 		
 		strswitch(type)
 			case "Binned":	
 				numBins = floor((IndexToScale(theWave,DimSize(theWave,0)-1,0) - IndexToScale(theWave,0,0) )/ binSize) //number of bins in wave
 				Make/O $(NameOfWave(theWave) + "_hist")
-				Histogram/C/B={pnt2x(theWave,0),binSize,numBins} spktm,$(NameOfWave(theWave) + "_hist")
 				Wave hist = $(NameOfWave(theWave) + "_hist")
+				
+				If(DimSize(spktm,0) == 0)
+					hist = 0
+				Else
+					Histogram/C/B={pnt2x(theWave,0),binSize,numBins} spktm,hist
+				EndIf
+				
 				hist /= binSize
 				
 				KillWaves spktm
@@ -6587,12 +6601,14 @@ Function moveToFolder()
 	EndFor
 End
 
-Function VectorSum3(inputWave,doPrint,returnItem,[scaled,angleWave])
-	Wave inputWave
-	Variable doPrint
-	String returnItem
-	Variable scaled
-	Wave angleWave
+Function VectorSum3(inputWave,doPrint,returnItem,[scaled,angleWave,PN])
+	//Calculates a vector sum of the input wave, and returns the specified value (angle, radius, or DSI)
+	Wave inputWave //tuning curve wave
+	Variable doPrint //print the results
+	String returnItem //'vAngle', 'DSI', or 'vRadius'
+	Variable scaled //x scaling is the angle
+	Wave angleWave //supply an angle wave
+	Variable PN //preferred null Vector Sum
 	
 	SetDataFolder GetWavesDataFolder(inputWave,1)
 	
@@ -6601,13 +6617,29 @@ Function VectorSum3(inputWave,doPrint,returnItem,[scaled,angleWave])
 	EndIf
 	
 	If(ParamIsDefault(angleWave))
+	//angle not wave supplied
 		Make/O/N=8 root:var:direction
 		Wave angleWave = root:var:direction
 		If(ParamIsDefault(scaled))
+			//not scaled, assue 45° delta angle
 			angleWave = 45*x
 		Else
+			Redimension/N=(DimSize(inputWave,0)) angleWave
 			angleWave = DimOffset(inputWave,0) + DimDelta(inputWave,0) * x
 		EndIf
+	EndIf
+	
+	
+	If(ParamIsDefault(PN))
+		PN = 0
+	Else
+		PN = 1
+	EndIf
+	
+	//PN vector sum, don't use full tuning curve
+	If(PN == 1)
+		Redimension/N=2 angleWave
+		angleWave = 180 * x
 	EndIf
 	
 	If(cmpstr(returnItem,"vAngle") !=0 && cmpstr(returnItem,"vRadius") !=0 && cmpstr(returnItem,"DSI") !=0)
@@ -6633,20 +6665,44 @@ Function VectorSum3(inputWave,doPrint,returnItem,[scaled,angleWave])
 		//get data from each column of input wave
 		Make/FREE/N=(DimSize(inputWave,0)) data
 		data[][0] = inputWave[p][j]
+		SetScale/P x,DimOffset(inputWave,0),DimDelta(inputWave,0),data
 		
 		vSumX = 0
 		vSumY = 0
 		totalSignal = 0
 		
-		For(i=0;i<numAngles;i+=1)
-			If(numtype(data[i]) == 2) 
-				continue
+		Variable nullPt
+		
+		If(PN)
+			//PN vector sum
+			WaveStats/Q data
+			nullPt = polarMath2(V_maxLoc,180,"deg","add")
+			If(nullPt == 360)
+				nullPt = 0
 			EndIf
-			vSumX += data[i]*cos(angleWave[i]*pi/180)
-			vSumY += data[i]*sin(angleWave[i]*pi/180)
-			totalSignal += data[i]
-		EndFor
-	
+		
+			nullPt = ScaleToIndex(data,nullPt,0)//180° off of the max value direction (preferred)
+			
+			vSumX += data[V_maxRowLoc] * cos(angleWave[0]*pi/180)
+			vSumY += data[V_maxRowLoc] * sin(angleWave[0]*pi/180)
+			totalSignal += data[V_maxRowLoc]
+			
+			vSumX += data[nullPt] * cos(angleWave[1]*pi/180)
+			vSumY += data[nullPt] * sin(angleWave[1]*pi/180)
+			totalSignal += data[nullPt]
+			
+		Else
+			//full tuning curve vector sum
+			For(i=0;i<numAngles;i+=1)
+				If(numtype(data[i]) == 2) 
+					continue
+				EndIf
+				vSumX += data[i]*cos(angleWave[i]*pi/180)
+				vSumY += data[i]*sin(angleWave[i]*pi/180)
+				totalSignal += data[i]
+			EndFor
+		EndIf
+		
 		Variable vRadius = sqrt(vSumX^2 + vSumY^2)
 		Variable vAngle = -atan2(vSumY,vSumX)*180/pi
 		Variable	DSI = vRadius/totalSignal

@@ -200,6 +200,7 @@ Function atButtonProc(ba) : ButtonControl
 										If(pos != -1)
 											outWaveName = left[0,pos-1]
 										Else
+											pos = strlen(left)
 											outWaveName = left
 										EndIf	
 										
@@ -236,6 +237,7 @@ Function atButtonProc(ba) : ButtonControl
 							Variable denoise = 1
 						case "External Function":
 						case "Duplicate Rename":
+						case "PSTH":
 						case "Average":
 						case "Error":
 						case "Denoise":
@@ -1185,7 +1187,7 @@ Function switchTabs(newTab)
 	String functionCtrlList = "AT_CommandPop;AT_Help;AT_RunCmd"
 	
 	//control list for functions that need the data set and scan options.
-	String dsFunctions = "External Function;Mask Image;Denoise;Max Project;Dynamic ROI;Duplicate Rename;Average;Error;PSTH;Set Wave Note;Kill Waves;Run Cmd Line;"
+	String dsFunctions = "External Function;Mask Image;Denoise;Max Project;Dynamic ROI;Duplicate Rename;Average;Error;PSTH;Move To Folder;Set Wave Note;Kill Waves;Run Cmd Line;"
 	
 	switch(newTab)
 		case 0://Data Sets
