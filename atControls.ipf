@@ -633,8 +633,9 @@ Function atListBoxProc(lba) : ListBoxControl
 					//Detect control-clicks for drag and drop
 					Variable/G root:Packages:analysisTools:DragAndDropRow
 					NVAR DragAndDropRow = root:Packages:analysisTools:DragAndDropRow
+					Variable keys = GetKeyState(0)
 					
-					If(GetKeyState(0) == 1) //command is held down
+					If(keys != 0) //command is held down
 						DragAndDropRow = row
 					Else
 						DragAndDropRow = -1
@@ -732,10 +733,14 @@ Function atListBoxProc(lba) : ListBoxControl
 				case "matchListBox":
 					NVAR DragAndDropRow = root:Packages:analysisTools:DragAndDropRow
 					If(NVAR_Exists(DragAndDropRow))
-						If(GetKeyState(0) == 1) //command is held down
-							If(DragAndDropRow != row && DragAndDropRow != -1)
-								DragAndDrop(DragAndDropRow,row,listWave,selWave) //performs drag and drop						
-							EndIf
+						keys = GetKeyState(0)
+						If(keys == 1 || keys == 9) //command is held down, CAPS can be on
+							Variable allWS = 1
+						ElseIf(keys == 2 || keys == 10)
+							allWS = 0
+						EndIf
+						If(DragAndDropRow != row && DragAndDropRow != -1)
+							DragAndDrop(DragAndDropRow,row,listWave,selWave,allWS) //performs drag and drop						
 						EndIf
 					EndIf
 					break
@@ -2570,10 +2575,11 @@ End
 
 //If command is held down during match listbox selection, engages drag and drop
 //Usage: rearranging data sets in highly custom ways
-Function DragAndDrop(startRow,endRow,listWave,selWave)
+Function DragAndDrop(startRow,endRow,listWave,selWave,allWS)
 	Variable startRow,endRow//selection row
 	Wave/T listWave//listbox text wave
 	Wave selWave//listbox selection wave
+	Variable allWS//apply to all wavesets or just the selected one?
 	
 	NVAR numWaveSets = root:Packages:analysisTools:DataSets:numWaveSets
 	SVAR wsDims = root:Packages:analysisTools:DataSets:wsDims
@@ -2627,41 +2633,55 @@ Function DragAndDrop(startRow,endRow,listWave,selWave)
 	relStart = startRow - wsStart
 	relEnd = endRow - wsStart
 	
-	//Replace the wave positions in the dataset, for every wave set. Might make this optional later.
-	String selection = ""
-	If(numWaveSets == 1)
-		wsStart = -1 //if there isn't wave set organization
-	Else
-		wsStart = 0 //if there is wave set organization
-	EndIf
-	
-	For(i=-1;i<numWaveSets;i+=1)
-		If(i > -1)
-			Variable numWaves = str2num(StringFromList(i,wsDims,";"))
-			wsStart += numWaves + 1 //start index of each waveset
+	If(allWS)
+	//apply to all wavesets
+		
+		//Replace the wave positions in the dataset, for every wave set. Might make this optional later.
+		String selection = ""
+		If(numWaveSets == 1)
+			wsStart = -1 //if there isn't wave set organization
 		Else
-			numWaves = str2num(StringFromList(0,wsDims,";"))
-			wsStart += 1 //on first data set
+			wsStart = 0 //if there is wave set organization
 		EndIf
 		
+		For(i=-1;i<numWaveSets-1;i+=1)
+			If(i > -1)
+				Variable numWaves = str2num(StringFromList(i,wsDims,";"))
+				wsStart += numWaves + 1 //start index of each waveset
+			Else
+				numWaves = str2num(StringFromList(0,wsDims,";"))
+				wsStart += 1 //on first data set
+			EndIf
+			
+			//relative start and end rows for each waveset
+			startRow = wsStart + relStart
+			endRow = wsStart + relEnd
+			
+			//continue if relative starting/end index is not in the current wave set (variable wave set sizes)
+			If(relStart > numWaves - 1)
+				continue
+			ElseIf(relEnd > numWaves - 1)
+				continue
+			EndIf
+			
+			//switch the start and end rows
+			selection = theDataSet[startRow]
+			DeletePoints startRow,1,theDataSet
+			InsertPoints endRow,1,theDataSet
+			theDataSet[endRow] = selection
+		EndFor
+	Else
+	//only apply to the waveset that is selected
+	
 		//relative start and end rows for each waveset
 		startRow = wsStart + relStart
 		endRow = wsStart + relEnd
-		
-		//continue if relative starting/end index is not in the current wave set (variable wave set sizes)
-		If(relStart > numWaves - 1)
-			continue
-		ElseIf(relEnd > numWaves - 1)
-			continue
-		EndIf
-		
 		//switch the start and end rows
 		selection = theDataSet[startRow]
 		DeletePoints startRow,1,theDataSet
 		InsertPoints endRow,1,theDataSet
 		theDataSet[endRow] = selection
-	EndFor
-	
+	EndIf
 	//update dataset display in list box
 	UpdateDSListBox(theDataSet)
 End
