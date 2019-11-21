@@ -1336,12 +1336,7 @@ Function atSetVarProc(sva) : SetVariableControl
 					getWaveMatchList()
 					fillFilterTable()
 					updateWSDimText()
-					
-					SVAR wsDims = root:Packages:analysisTools:DataSets:wsDims
-					wsDims = GetWaveSetDims(dataSetName)
-					NVAR numWaveSets = root:Packages:analysisTools:DataSets:numWaveSets
-					numWaveSets = ItemsInList(wsDims,";")
-					
+
 					SetDataFolder $df
 					
 					If(!strlen(dataSetName))
@@ -1367,10 +1362,7 @@ Function atSetVarProc(sva) : SetVariableControl
 					getWaveMatchList()
 					fillFilterTable()
 					updateWSDimText()
-					SVAR wsDims = root:Packages:analysisTools:DataSets:wsDims
-					wsDims = GetWaveSetDims(dataSetName)
-					NVAR numWaveSets = root:Packages:analysisTools:DataSets:numWaveSets
-					numWaveSets = ItemsInList(wsDims,";")
+				
 					SetDataFolder $df
 					
 					If(!strlen(dataSetName))
@@ -1390,10 +1382,6 @@ Function atSetVarProc(sva) : SetVariableControl
 					getWaveMatchList()
 					fillFilterTable()
 					updateWSDimText()	
-					SVAR wsDims = root:Packages:analysisTools:DataSets:wsDims
-					wsDims = GetWaveSetDims(dataSetName)
-					NVAR numWaveSets = root:Packages:analysisTools:DataSets:numWaveSets
-					numWaveSets = ItemsInList(wsDims,";")
 					
 					SetDataFolder $df
 					
