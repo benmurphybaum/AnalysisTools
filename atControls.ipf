@@ -958,7 +958,8 @@ Function atListBoxProc(lba) : ListBoxControl
 					Else
 						wsDims = GetWaveSetDims(listWave[selection])
 					EndIf
-					
+					NVAR numWaveSets = root:Packages:analysisTools:DataSets:numWaveSets
+					numWaveSets = ItemsInList(wsDims,";")
 					updateWSFilters()
 					
 					//Set full path text wave to match the wave name text wave
@@ -1182,6 +1183,8 @@ Function atPopProc(pa) : PopupMenuControl
 					SetExtFuncMenus(pa.popStr)
 					SVAR wsDims = root:Packages:analysisTools:DataSets:wsDims
 					wsDims = GetWaveSetDims(pa.popStr)
+					NVAR numWaveSets = root:Packages:analysisTools:DataSets:numWaveSets
+					numWaveSets = ItemsInList(wsDims,";")
 					
 					//ControlInfo/W=analysis_tools AT_CommandPop
 					If(!cmpstr(currentCmd,"Run Cmd Line"))
@@ -1336,7 +1339,8 @@ Function atSetVarProc(sva) : SetVariableControl
 					
 					SVAR wsDims = root:Packages:analysisTools:DataSets:wsDims
 					wsDims = GetWaveSetDims(dataSetName)
-			
+					NVAR numWaveSets = root:Packages:analysisTools:DataSets:numWaveSets
+					numWaveSets = ItemsInList(wsDims,";")
 					
 					SetDataFolder $df
 					
@@ -1365,7 +1369,8 @@ Function atSetVarProc(sva) : SetVariableControl
 					updateWSDimText()
 					SVAR wsDims = root:Packages:analysisTools:DataSets:wsDims
 					wsDims = GetWaveSetDims(dataSetName)
-					
+					NVAR numWaveSets = root:Packages:analysisTools:DataSets:numWaveSets
+					numWaveSets = ItemsInList(wsDims,";")
 					SetDataFolder $df
 					
 					If(!strlen(dataSetName))
@@ -1387,6 +1392,9 @@ Function atSetVarProc(sva) : SetVariableControl
 					updateWSDimText()	
 					SVAR wsDims = root:Packages:analysisTools:DataSets:wsDims
 					wsDims = GetWaveSetDims(dataSetName)
+					NVAR numWaveSets = root:Packages:analysisTools:DataSets:numWaveSets
+					numWaveSets = ItemsInList(wsDims,";")
+					
 					SetDataFolder $df
 					
 					If(!strlen(dataSetName))
@@ -1431,6 +1439,8 @@ Function atSetVarProc(sva) : SetVariableControl
 						updateWSDimText()
 						SVAR wsDims = root:Packages:analysisTools:DataSets:wsDims
 						wsDims = GetWaveSetDims(dataSetName)
+						NVAR numWaveSets = root:Packages:analysisTools:DataSets:numWaveSets
+						numWaveSets = ItemsInList(wsDims,";")
 					Else
 						//data set
 						Wave/T/Z ds = GetDataSetWave(dsName = dataSetName)
@@ -1460,6 +1470,8 @@ Function atSetVarProc(sva) : SetVariableControl
 						updateWSDimText()
 						SVAR wsDims = root:Packages:analysisTools:DataSets:wsDims
 						wsDims = GetWaveSetDims(dataSetName)
+						NVAR numWaveSets = root:Packages:analysisTools:DataSets:numWaveSets
+						numWaveSets = ItemsInList(wsDims,";")
 					EndIf
 	
 					break
@@ -2583,6 +2595,7 @@ Function DragAndDrop(startRow,endRow,listWave,selWave,allWS)
 	
 	NVAR numWaveSets = root:Packages:analysisTools:DataSets:numWaveSets
 	SVAR wsDims = root:Packages:analysisTools:DataSets:wsDims
+	numWaveSets = ItemsInList(wsDims,";")
 	
 	//Current data set selection
 	String dsName = whichDataSet()
