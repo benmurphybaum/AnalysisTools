@@ -182,14 +182,15 @@ Function atButtonProc(ba) : ButtonControl
 									
 									//check if there is an output wave assignment, if so does it exist?
 									String left,outWaveName,folder,firstWave
-									Variable pos,semicolonPos
+									Variable pos,semicolonPos,numCommands
 									
 									left = ""
 									If(stringmatch(runCmdStr,"*=*"))
 									   left = StringFromList(0,runCmdStr,"=")
 									   //if the wave assignment is not the first command, there may be problems with other escape codes. Remove these first
-									   Do
-										   left = StringFromlist(ItemsInList(left,";")-1,left,";")
+									   Do	
+									   	numCommands = ItemsInList(left,";")
+										   left = StringFromlist(numCommands-1,left,";")
 										   semicolonPos = strsearch(left,";",0)
 										While(semicolonPos != -1)
 									EndIf
@@ -200,12 +201,17 @@ Function atButtonProc(ba) : ButtonControl
 										If(pos != -1)
 											outWaveName = left[0,pos-1]
 										Else
-											pos = strlen(left)
-											outWaveName = left
+											pos = strsearch(left,"(",0) //checks if equals sign is from an optional parameter assignment, which would always have an open parentheses prior to it.
+											If(pos != -1)
+												outWaveName = "" //null string if it finds that this is an optional parameter declaration, not a wave assignment
+											Else
+												pos = strlen(left)
+												outWaveName = left
+											EndIf
 										EndIf	
 										
 										//if its a full path, don't add a path to the name
-										If(!stringmatch(outWaveName,"root:*"))
+										If(strlen(outWaveName) && !stringmatch(outWaveName,"root:*"))
 											firstWave = StringFromList(0,theWaveSet,";")
 											folder = GetWavesDataFolder($firstWave,1)
 										
@@ -213,8 +219,14 @@ Function atButtonProc(ba) : ButtonControl
 											outWaveName = folder + outWaveName
 											
 											//append full path to cmd string
-											runCmdStr[0,pos-1] = ""
-											runCmdStr = outWaveName + runCmdStr
+											String editCommandStr = StringFromList(numCommands-1,runCmdStr,";") //get command string that contains the wave assignment
+											editCommandStr[0,pos-1] = ""
+											editCommandStr = outWaveName + editCommandStr
+											
+											runCmdStr = ReplaceListItem(numCommands-1,runCmdStr,";",editCommandStr)
+								
+//											runCmdStr[0,pos-1] = ""
+//											runCmdStr = outWaveName + runCmdStr
 										EndIf
 										
 										If(strlen(outWaveName) && !WaveExists($outWaveName))
@@ -558,6 +570,8 @@ End
 
 Function atListBoxProc(lba) : ListBoxControl
 	STRUCT WMListboxAction &lba
+	//STRUCT WMWinHookStruct &s
+	
 	SVAR cdf = root:Packages:analysisTools:currentDataFolder
 	SVAR scanListStr = root:Packages:twoP:examine:scanListStr
 	SVAR ROIListStr = root:Packages:twoP:examine:ROIListStr
@@ -614,6 +628,18 @@ Function atListBoxProc(lba) : ListBoxControl
 							
 						EndIf
 					EndIf
+					
+											
+					//Detect control-clicks for drag and drop
+					Variable/G root:Packages:analysisTools:DragAndDropRow
+					NVAR DragAndDropRow = root:Packages:analysisTools:DragAndDropRow
+					
+					If(GetKeyState(0) == 1) //command is held down
+						DragAndDropRow = row
+					Else
+						DragAndDropRow = -1
+					EndIf
+					
 					break
 				case "dataSetListBox":
 					If(lba.eventMod == 17)
@@ -703,7 +729,16 @@ Function atListBoxProc(lba) : ListBoxControl
 					AppendToViewer(selWaveList)
 					
 					break
-				
+				case "matchListBox":
+					NVAR DragAndDropRow = root:Packages:analysisTools:DragAndDropRow
+					If(NVAR_Exists(DragAndDropRow))
+						If(GetKeyState(0) == 1) //command is held down
+							If(DragAndDropRow != row && DragAndDropRow != -1)
+								DragAndDrop(DragAndDropRow,row,listWave,selWave) //performs drag and drop						
+							EndIf
+						EndIf
+					EndIf
+					break
 				default:
 					break
 			endswitch
@@ -897,6 +932,7 @@ Function atListBoxProc(lba) : ListBoxControl
 					Wave/T AT_WaveListTable_FullPath = root:Packages:analysisTools:AT_WaveListTable_FullPath
 					Wave/T ogAT_WaveListTable_UnGroup = root:Packages:analysisTools:DataSets:ogAT_WaveListTable_UnGroup
 					Wave matchListselWave = root:Packages:analysisTools:AT_selWave
+					SVAR wsDims = root:Packages:analysisTools:DataSets:wsDims
 					
 					selection = lba.row
 					
@@ -912,6 +948,12 @@ Function atListBoxProc(lba) : ListBoxControl
 					
 					checkMissingWaves(listWave[selection])
 					updateWSDimText()
+					If(selection == -1)
+						wsDims = GetWaveSetDims("")
+					Else
+						wsDims = GetWaveSetDims(listWave[selection])
+					EndIf
+					
 					updateWSFilters()
 					
 					//Set full path text wave to match the wave name text wave
@@ -1286,6 +1328,11 @@ Function atSetVarProc(sva) : SetVariableControl
 					getWaveMatchList()
 					fillFilterTable()
 					updateWSDimText()
+					
+					SVAR wsDims = root:Packages:analysisTools:DataSets:wsDims
+					wsDims = GetWaveSetDims(dataSetName)
+			
+					
 					SetDataFolder $df
 					
 					If(!strlen(dataSetName))
@@ -1311,6 +1358,9 @@ Function atSetVarProc(sva) : SetVariableControl
 					getWaveMatchList()
 					fillFilterTable()
 					updateWSDimText()
+					SVAR wsDims = root:Packages:analysisTools:DataSets:wsDims
+					wsDims = GetWaveSetDims(dataSetName)
+					
 					SetDataFolder $df
 					
 					If(!strlen(dataSetName))
@@ -1330,6 +1380,8 @@ Function atSetVarProc(sva) : SetVariableControl
 					getWaveMatchList()
 					fillFilterTable()
 					updateWSDimText()	
+					SVAR wsDims = root:Packages:analysisTools:DataSets:wsDims
+					wsDims = GetWaveSetDims(dataSetName)
 					SetDataFolder $df
 					
 					If(!strlen(dataSetName))
@@ -1372,7 +1424,8 @@ Function atSetVarProc(sva) : SetVariableControl
 						//update the list box and wave counters
 						updateWaveListBox()
 						updateWSDimText()
-						
+						SVAR wsDims = root:Packages:analysisTools:DataSets:wsDims
+						wsDims = GetWaveSetDims(dataSetName)
 					Else
 						//data set
 						Wave/T/Z ds = GetDataSetWave(dsName = dataSetName)
@@ -1400,6 +1453,8 @@ Function atSetVarProc(sva) : SetVariableControl
 						//update the list box and wave counters
 						updateWaveListBox()
 						updateWSDimText()
+						SVAR wsDims = root:Packages:analysisTools:DataSets:wsDims
+						wsDims = GetWaveSetDims(dataSetName)
 					EndIf
 	
 					break
@@ -2511,4 +2566,102 @@ Function ptsOverThreshold(theWave,threshold,overUnder)
 
 	print(count)
 	print(count/DimSize(temp,0))
+End
+
+//If command is held down during match listbox selection, engages drag and drop
+//Usage: rearranging data sets in highly custom ways
+Function DragAndDrop(startRow,endRow,listWave,selWave)
+	Variable startRow,endRow//selection row
+	Wave/T listWave//listbox text wave
+	Wave selWave//listbox selection wave
+	
+	NVAR numWaveSets = root:Packages:analysisTools:DataSets:numWaveSets
+	SVAR wsDims = root:Packages:analysisTools:DataSets:wsDims
+	
+	//Current data set selection
+	String dsName = whichDataSet()
+	Wave/T theDataSet = $("root:Packages:analysisTools:DataSets:DS_" + dsName)
+	
+	If(!WaveExists(theDataSet))
+		Wave/T theDataSet = root:Packages:analysisTools:AT_WaveListTable_FullPath
+	EndIf
+	
+	//no entire waveset restructuring allowed yet
+	If(stringmatch(theDataSet[startRow],"*WSN*"))
+		return -1
+	EndIf
+	
+	//start of waveset that the wave belongs to
+	Variable wsStart,wsEnd,relStart,relEnd,i
+	i = startRow
+	Do
+		i-=1
+		
+		If(i < 0)
+			break
+		EndIf
+	While(!stringmatch(theDataSet[i],"*WSN*"))
+	wsStart = i + 1
+	
+	//end of waveset that the wave belongs to
+	i = startRow
+	Do
+		i+=1
+		
+		If(i > DimSize(theDataSet,0) - 1)
+			break
+		EndIf
+	While(!stringmatch(theDataSet[i],"*WSN*"))
+	wsEnd = i - 1
+	
+	//Ensures end row selection is within a single waveset
+	If(endRow > wsEnd)
+		endRow = wsEnd
+	EndIf
+	
+	If(endRow < wsStart)
+		endRow = wsStart
+	EndIf
+	
+	//Notes the start and end indices relative to the waveset
+	relStart = startRow - wsStart
+	relEnd = endRow - wsStart
+	
+	//Replace the wave positions in the dataset, for every wave set. Might make this optional later.
+	String selection = ""
+	If(numWaveSets == 1)
+		wsStart = -1 //if there isn't wave set organization
+	Else
+		wsStart = 0 //if there is wave set organization
+	EndIf
+	
+	For(i=-1;i<numWaveSets;i+=1)
+		If(i > -1)
+			Variable numWaves = str2num(StringFromList(i,wsDims,";"))
+			wsStart += numWaves + 1 //start index of each waveset
+		Else
+			numWaves = str2num(StringFromList(0,wsDims,";"))
+			wsStart += 1 //on first data set
+		EndIf
+		
+		//relative start and end rows for each waveset
+		startRow = wsStart + relStart
+		endRow = wsStart + relEnd
+		
+		//continue if relative starting/end index is not in the current wave set (variable wave set sizes)
+		If(relStart > numWaves - 1)
+			continue
+		ElseIf(relEnd > numWaves - 1)
+			continue
+		EndIf
+		
+		//switch the start and end rows
+		selection = theDataSet[startRow]
+		DeletePoints startRow,1,theDataSet
+		InsertPoints endRow,1,theDataSet
+		theDataSet[endRow] = selection
+	EndFor
+	
+	//update dataset display in list box
+	UpdateDSListBox(theDataSet)
 End

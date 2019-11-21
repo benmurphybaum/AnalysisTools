@@ -724,7 +724,9 @@ Function LoadAnalysisSuite([left,top])
 	PopUpMenu histType win=analysis_tools,pos={20,130},size={90,20},title="Type",value="Binned;Gaussian",disable=1
 	SetVariable spkThreshold win=analysis_tools,pos={20,160},size={90,20},title="Threshold",value=_NUM:0,disable=1
 	SetVariable binSize win=analysis_tools,pos={29,180},size={81,20},title="Bin Size",value=_NUM:0,disable=1
-	Checkbox flattenWaveCheck win=analysis_tools,pos={29,200},size={81,20},title="Flatten Wave",disable=1
+	Checkbox flattenWaveCheck win=analysis_tools,pos={29,240},size={81,20},title="Flatten Wave",disable=1
+	SetVariable startTmPSTH win=analysis_tools,pos={29,200},size={81,20},title="Start",value=_NUM:0,disable=1
+	SetVariable endTmPSTH win=analysis_tools,pos={29,220},size={81,20},title="End",value=_NUM:0,disable=1
 	
 	//Duplicate Rename
 	SetVariable prefixName win=analysis_tools,pos={20,60},size={40,20},title="",value=_STR:"",disable=1
@@ -1027,7 +1029,7 @@ Function CreateControlLists(cmdList)
 	//PSTH
 	String/G root:Packages:analysisTools:ctrlList_psth
 	SVAR ctrlList_psth = root:Packages:analysisTools:ctrlList_psth
-	ctrlList_psth = "extFuncDS;extFuncChannelPop;extFuncDSListBox;binSize;spkThreshold;histType;outFolder;flattenWaveCheck"
+	ctrlList_psth = "extFuncDS;extFuncChannelPop;extFuncDSListBox;binSize;spkThreshold;histType;outFolder;flattenWaveCheck;startTmPSTH;endTmPSTH"
 	
 	//Kill Waves
 	String/G root:Packages:analysisTools:ctrlList_killwaves

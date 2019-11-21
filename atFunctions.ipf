@@ -6338,6 +6338,10 @@ Function PSTH()
 	String folder = S_Value
 	ControlInfo/W=analysis_tools flattenWaveCheck
 	Variable flatten = V_Value
+	ControlInfo/W=analysis_tools startTmPSTH
+	Variable startTm = V_Value
+	ControlInfo/W=analysis_tools endTmPSTH
+	Variable endTm = V_Value
 	
 	Variable i,j,numWaves,numBins
 	
@@ -6367,7 +6371,7 @@ Function PSTH()
 		EndIf
 		
 		//get spike times
-		FindLevels/Q/EDGE=1/M=0.002/D=spktm theWave,threshold
+		FindLevels/Q/EDGE=1/M=0.002/R=(startTm,endTm)/D=spktm theWave,threshold
 		spkct[i] = V_LevelsFound
 		
 		strswitch(type)

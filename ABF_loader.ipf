@@ -455,13 +455,18 @@ Function ABFLoader(filepath,whichChannel,doLoad)
 	EndIf
 	
 	//edit to add 4 gain channels
-	Make/O/N=4 root:ABFvar:addGain
+	Make/O/N=8 root:ABFvar:addGain
 	Wave addGain = root:ABFvar:addGain
 	If(h.fileVersionNumber >= 1.65)		
 		addGain[0] = h.telegraphEnable[0]*h.telegraphAdditGain[0]
 		addGain[1] = h.telegraphEnable[1]*h.telegraphAdditGain[1]
 		addGain[2] = h.telegraphEnable[2]*h.telegraphAdditGain[2]
 		addGain[3] = h.telegraphEnable[3]*h.telegraphAdditGain[3]
+		addGain[4] = h.telegraphEnable[4]*h.telegraphAdditGain[4]
+		addGain[5] = h.telegraphEnable[5]*h.telegraphAdditGain[5]
+		addGain[6] = h.telegraphEnable[6]*h.telegraphAdditGain[6]
+		addGain[7] = h.telegraphEnable[7]*h.telegraphAdditGain[7]
+		
 		addGain = (addGain == 0) ? 1 : addGain
 	Else
 		addGain = 1
@@ -675,13 +680,13 @@ Structure headerParameters
 	//ADC extras
 	string recChNames
 	string recChUnits
-	int16 telegraphEnable[4]
-	float telegraphAdditGain[4]
-	float instrumentScaleFactor[4]
-	float signalGain[4]
-	float ADCProgrammableGain[4]
-	float instrumentOffset[4]
-	float signalOffset[4]
+	int16 telegraphEnable[8] //Good for up to 8 channels 
+	float telegraphAdditGain[8]
+	float instrumentScaleFactor[8]
+	float signalGain[8]
+	float ADCProgrammableGain[8]
+	float instrumentOffset[8]
+	float signalOffset[8]
 	
 	//ADC extras
 	//string recChNames

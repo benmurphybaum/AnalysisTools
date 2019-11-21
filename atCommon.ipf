@@ -4512,3 +4512,31 @@ Function goToProc()
 		EndFor	
 	EndFor	
 End
+
+Function areaOffset(inWave,offset[,startX,endX])
+//returns the area under the curve above the indicated offset value
+	Wave inWave
+	Variable offset
+	Variable startX,endX
+	Variable theArea
+	
+	If(ParamIsDefault(startX))
+		startX = DimOffset(inWave,0)
+	EndIf
+	
+	If(ParamIsDefault(endX))
+		endX = pnt2x(inWave,DimSize(inWave,0)-1)
+	EndIf
+	
+	If(!WaveExists(inWave))
+		Abort "The input wave does not exist: " + NameOfWave(inWave)
+		return nan
+	EndIf
+	
+	//remove offset
+	Duplicate/FREE inWave,temp
+	temp -= offset
+	
+	theArea = area(temp,startX,endX)
+	return theArea
+End
