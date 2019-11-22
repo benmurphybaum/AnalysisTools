@@ -6843,3 +6843,110 @@ Function manualRegistration(xDelta,yDelta)
 	EndFor
 
 End
+
+//Decodes binary data from the nidaq boards into ASCII codes
+Function/S decodeStimulusASCII(inWave)
+	Wave inWave
+	String bits = ""
+	
+	//ending X point of the wave
+	Variable startX,endX,delta,lastRise
+	startX = DimOffset(inWave,0)
+	endX = pnt2x(inWave,DimSize(inWave,0) - 1)
+	delta = 0
+	
+	Do
+		//initial rising edge of block indicating first bit
+		FindLevel/Q/EDGE=1/R=(startX,endX) inWave,3
+		startX = V_LevelX
+		
+		//no levels found
+		If(V_flag)
+			break
+		EndIf
+		
+		//initial falling edge of block indicating first bit
+		FindLevel/Q/EDGE=2/R=(startX,endX) inWave,3
+		
+		// duration for the block will be variable. Need to adjust bit detection accordingly
+		delta = V_LevelX - startX
+		
+		//small delta means end of sequence
+		If(delta < 0.0005)
+			FindLevels/Q/EDGE=1/R=(lastRise - 2 * deltax(inWave),endX) inWave,3
+			If(V_LevelsFound == 3)
+				bits[strlen(bits)-1] = "0"
+			EndIf
+			break
+		EndIf
+		
+		//replace start x point with previous falling level
+		startX = V_LevelX
+		
+		//detects the leading edge of bit as high or low
+		//time period it searches is adjusted according to previous block length
+		FindLevel/Q/EDGE=1/R=(startX,startX + delta) inWave,3
+		lastRise = V_LevelX
+		
+		If(numtype(lastRise) == 2)
+			lastRise = startX
+			bits += "0"
+		EndIf
+		
+		//found edge within delta
+		If(!V_flag) 
+			//is there a corresponding falling edge with 1/3 delta?
+			FindLevel/Q/EDGE=2/R=(lastRise,lastRise + delta/3) inWave,3
+			
+			If(!V_flag)
+				bits += "1"
+				//new start x is the falling edge of the bit
+				startX = V_LevelX
+			Else
+				bits += "0"
+				//last rising edge must have been start of next block
+				startX = lastRise - 2 * deltax(inWave) //back up a couple points to redetect block rising edge on next loop
+			EndIf
+		EndIf
+	While(1)
+	
+	KillWaves/Z W_FindLevels
+	
+	String outputStr = binaryToStr(bits)
+	return outputStr
+End
+
+//Takes binary sequence and converts it to ASCII codes, then converts that to a string
+Function/S binaryToStr(input)
+	String input
+	Variable len = strlen(input)
+	Variable numChars = len / 8
+	Variable i,j,total,startPos,endPos
+	String asciiStr = ""
+	String output = ""
+	Variable asciiCode
+	
+	startPos = 0 
+	endPos = 7
+	
+	For(i=0;i<numChars;i+=1)
+		total = 0
+		String word = input[startPos,endPos]
+		
+		For(j=0;j<8;j+=1)
+			Variable char = str2num(word[j])
+			total = total * 2 + char
+		EndFor
+		
+		asciiStr += num2str(total) + ";"
+		startPos += 8
+		endPos += 8
+	EndFor
+	
+	For(i=0;i<numChars;i+=1)
+		asciiCode = str2num(StringFromList(i,asciiStr,";"))
+		output += num2char(asciiCode)
+	EndFor
+	
+	return output
+End

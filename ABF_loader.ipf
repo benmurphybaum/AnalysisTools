@@ -45,7 +45,7 @@ Function Build_ABF2_Loader()
 	
 	DoWindow ABF2Loader
 	If(!V_flag)
-		NewPanel/K=1/N=ABF2Loader/W=(0,0,380,80) as "ABF2 Loader"
+		NewPanel/K=1/N=ABF2Loader/W=(0,0,380,100) as "ABF2 Loader"
 		ModifyPanel/W=ABF2Loader fixedsize=1
 		SetVariable ABF_folderpath win=ABF2Loader,pos={10,10},size={320,20},title="Path:",value=root:ABFvar:ABF_folderpath
 		SetVariable ABF_filename win=ABF2Loader,pos={10,30},size={150,20},title="File:",value=root:ABFvar:ABF_filename
@@ -53,6 +53,8 @@ Function Build_ABF2_Loader()
 		Button ABF_Browse win=ABF2Loader,pos={340,7},size={25,20},title="...",proc=ABF2_BrowseFiles
 		Button ABF_Index win=ABF2Loader,pos={180,27},size={50,20},title="Index",proc=ABF2_BrowseFiles
 		Button ABF_LoadWaves win=ABF2Loader,pos={180,47},size={50,20},title="Load",proc=ABF2_BrowseFiles
+		
+		PopUpMenu ABF_LoadStimData win=ABF2Loader,pos={10,70},size={100,20},title="Stimulus Data",value="None;1;2;3;4;"
 	EndIf
 End
 
@@ -455,7 +457,7 @@ Function ABFLoader(filepath,whichChannel,doLoad)
 	EndIf
 	
 	//edit to add 4 gain channels
-	Make/O/N=8 root:ABFvar:addGain
+	Make/O/N=15 root:ABFvar:addGain
 	Wave addGain = root:ABFvar:addGain
 	If(h.fileVersionNumber >= 1.65)		
 		addGain[0] = h.telegraphEnable[0]*h.telegraphAdditGain[0]
@@ -466,6 +468,13 @@ Function ABFLoader(filepath,whichChannel,doLoad)
 		addGain[5] = h.telegraphEnable[5]*h.telegraphAdditGain[5]
 		addGain[6] = h.telegraphEnable[6]*h.telegraphAdditGain[6]
 		addGain[7] = h.telegraphEnable[7]*h.telegraphAdditGain[7]
+		addGain[8] = h.telegraphEnable[8]*h.telegraphAdditGain[8]
+		addGain[9] = h.telegraphEnable[9]*h.telegraphAdditGain[9]
+		addGain[10] = h.telegraphEnable[10]*h.telegraphAdditGain[10]
+		addGain[11] = h.telegraphEnable[11]*h.telegraphAdditGain[11]
+		addGain[12] = h.telegraphEnable[12]*h.telegraphAdditGain[12]
+		addGain[13] = h.telegraphEnable[13]*h.telegraphAdditGain[13]
+		addGain[14] = h.telegraphEnable[14]*h.telegraphAdditGain[14]
 		
 		addGain = (addGain == 0) ? 1 : addGain
 	Else
@@ -680,13 +689,13 @@ Structure headerParameters
 	//ADC extras
 	string recChNames
 	string recChUnits
-	int16 telegraphEnable[8] //Good for up to 8 channels 
-	float telegraphAdditGain[8]
-	float instrumentScaleFactor[8]
-	float signalGain[8]
-	float ADCProgrammableGain[8]
-	float instrumentOffset[8]
-	float signalOffset[8]
+	int16 telegraphEnable[15] //Good for up to 15 channels 
+	float telegraphAdditGain[15]
+	float instrumentScaleFactor[15]
+	float signalGain[15]
+	float ADCProgrammableGain[15]
+	float instrumentOffset[15]
+	float signalOffset[15]
 	
 	//ADC extras
 	//string recChNames
@@ -964,6 +973,7 @@ Function LoadABF([fromAT])
 				DoAlert 0,"Some waves were unable to be loaded."
 				print errorStr
 			EndIf
+			
 		EndIf
 	EndFor
 End
@@ -1202,7 +1212,22 @@ Function SeparateChannels(filepath,traceName,tempd,h,dataPtsPerSweep,whichChanne
 		d[][i] = unitScaleFactor*(d[p][i])/(h.InstrumentScaleFactor[index]*h.signalGain[index]*h.ADCProgrammableGain[index]*addGain[index])*(h.ADCRange/h.ADCResolution) + h.instrumentOffset[index] - h.signalOffset[index]
 	EndFor
 	
+	
+	ControlInfo/W=ABF2Loader ABF_LoadStimData
+	String stimChannel = S_Value
+	
 	String channelList = resolveListItems(whichChannel,";")
+	
+	//extract the designated stimulus channel here
+	If(cmpstr(stimChannel,"None"))
+		Variable channelPos = str2num(stimChannel) - 1
+		Make/FREE/N=(DimSize(d,0)) stimWave
+		stimWave[] = d[p][channelPos]
+		SetScale/P x,0,h.si/(1e6),"s",stimWave
+		
+		String stimName = decodeStimulusASCII(stimWave)
+	EndIf
+	
 	For(j=0;j<ItemsInList(channelList,";");j+=1)
 		Variable theChannel = str2num(StringFromList(j,channelList,";"))
 		Make/O/N=(DimSize(d,0)) $StringFromList(j,traceName,";")
@@ -1211,6 +1236,11 @@ Function SeparateChannels(filepath,traceName,tempd,h,dataPtsPerSweep,whichChanne
 		outWave[] = d[p][theChannel-1]
 		SetScale/P x,0,h.si/(1e6),"s",outWave
 		Note/K outWave,filepath
+		
+		//Append stimulus name
+		If(cmpstr(stimChannel,"None"))
+			Note outWave,"Stimulus: " + stimName
+		EndIf
 	EndFor
 	
 	//Cleanup
