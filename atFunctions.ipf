@@ -6380,13 +6380,13 @@ Function PSTH()
 				NewDataFolder $(GetWavesDataFolder(theWave,1) + folder)
 			EndIf
 		EndIf
-		
-		SetDataFolder GetWavesDataFolder(theWave,1) + folder
-		
+			
 		If(flatten)
 			flattenWave(theWave)
 		EndIf
 		
+		SetDataFolder GetWavesDataFolder(theWave,1) + folder
+
 		//get spike times
 		FindLevels/Q/EDGE=1/M=0.002/R=(startTm,endTm)/D=spktm theWave,threshold
 		spkct[i] = V_LevelsFound
