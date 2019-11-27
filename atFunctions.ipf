@@ -6394,8 +6394,9 @@ Function PSTH()
 		strswitch(type)
 			case "Binned":	
 				numBins = floor((IndexToScale(theWave,DimSize(theWave,0)-1,0) - IndexToScale(theWave,0,0) )/ binSize) //number of bins in wave
-				Make/O $(NameOfWave(theWave) + "_hist")
-				Wave hist = $(NameOfWave(theWave) + "_hist")
+				String histName = ReplaceListItem(0,NameOfWave(theWave),"_","PSTH")
+				Make/O $histName
+				Wave hist = $histName
 				
 				If(DimSize(spktm,0) == 0)
 					hist = 0
@@ -6431,9 +6432,10 @@ Function PSTH()
 					EndIf
 					raster[x2pnt(raster,spktm[j])] = 1
 				Endfor
-	
-				Duplicate/O template,$(NameOfWave(theWave) + "_hist");DelayUpdate
-				Wave hist = $(NameOfWave(theWave) + "_hist")
+				
+				histName = ReplaceListItem(0,NameOfWave(theWave),"_","PSTH")
+				Duplicate/O template,$histName;DelayUpdate
+				Wave hist = $histName
 				
 				Convolve raster, hist
 				hist *=1000
