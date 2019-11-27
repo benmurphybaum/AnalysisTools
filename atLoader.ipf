@@ -24,16 +24,29 @@ Function FindExternalModules()
 
 	NewPath/Q/Z/C/O IgorProcPath,filepath
 	
+	checkPackageExists()
+	
 	String/G root:Packages:analysisTools:fileList
 	SVAR fileList = root:Packages:analysisTools:fileList
-	
+	fileList = ""
 	fileList = IndexedFile(IgorProcPath,-1,".ipf")//finds ipf files
+	
 	If(!strlen(fileList))
 		fileList = ""
 	EndIf
 	InsertIncludes(fileList)
 End
 
+//Checks that the folders for the package exist, creates them if they don't
+Function checkPackageExists()
+	If(!DataFolderExists("root:Packages"))
+		NewDataFolder root:Packages
+	EndIf
+	
+	If(!DataFolderExists("root:Packages:analysisTools"))
+		NewDataFolder root:Packages:analysisTools
+	EndIf
+End
 
 //Adds #includes the external procedure files
 Function InsertIncludes(fileList)
@@ -87,6 +100,8 @@ Function/S ExProcMenuCategories(menuItem)
 	
 	String/G root:Packages:analysisTools:extFuncList
 	SVAR extFuncList = root:Packages:analysisTools:extFuncList
+	
+	checkPackageExists()
 	
 	FindExternalModules()
 	SVAR fileList = root:Packages:analysisTools:fileList

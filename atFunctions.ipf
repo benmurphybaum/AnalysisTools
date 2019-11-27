@@ -5334,15 +5334,26 @@ Function AverageWaves()
 	Wave outWave = $outWaveName 
 	outWave = 0
 	
+	//Keep track of NaNs so we can ignore them in the average
+	Make/FREE/N=(DimSize(outWave,0)) nanTracker,temp
+	nanTracker = 0
+	
 	Note/K outWave,num2str(numWaves) + " waves averaged:"
 	For(i=0;i<numWaves;i+=1)
 		Wave theWave = $StringFromList(i,theWaveList,";")
 		matchScale(outWave,theWave)
 		
-		outWave += theWave
+		nanTracker = (numtype(theWave) == 2) ? nanTracker : nanTracker + 1
+		
+		//replace any nans in the input wave before adding to the average
+		temp = (numType(theWave) == 2) ? 0 : theWave
+		
+		outWave += temp
 		Note outWave,GetWavesDataFolder(theWave,2)
 	EndFor
-	outWave /= numWaves
+	
+	outWave /= nanTracker
+	//outWave /= numWaves
 	SetScale/P x,DimOffset(theWave,0),DimDelta(theWave,0),outWave
 	SetScale/P y,DimOffset(theWave,1),DimDelta(theWave,1),outWave
 	SetScale/P z,DimOffset(theWave,2),DimDelta(theWave,2),outWave
@@ -6342,6 +6353,7 @@ Function PSTH()
 	Variable startTm = V_Value
 	ControlInfo/W=analysis_tools endTmPSTH
 	Variable endTm = V_Value
+
 	
 	Variable i,j,numWaves,numBins
 	
@@ -6354,6 +6366,11 @@ Function PSTH()
 	SetDataFolder GetWavesDataFolder(theWave,1)
 	Make/O/N=(numWaves) $ReplaceListItem(0,NameOfWave(theWave),"_","spkct")
 	Wave spkct = $ReplaceListItem(0,NameOfWave(theWave),"_","spkct")
+	
+		
+	If(endTm == 0 || endTm < startTm)
+		endTm = pnt2x(theWave,DimSize(theWave,0) -1)
+	EndIf
 	
 	For(i=0;i<numWaves;i+=1)
 		Wave theWave = $StringFromList(i,waveNameList,";")
@@ -6409,6 +6426,9 @@ Function PSTH()
 				raster = 0
 				
 				For(j=0;j<DimSize(spktm,0);j+=1)
+					If(x2pnt(raster,spktm[j]) > (DimSize(raster,0)-1))
+						continue
+					EndIf
 					raster[x2pnt(raster,spktm[j])] = 1
 				Endfor
 	
@@ -6844,109 +6864,3 @@ Function manualRegistration(xDelta,yDelta)
 
 End
 
-//Decodes binary data from the nidaq boards into ASCII codes
-Function/S decodeStimulusASCII(inWave)
-	Wave inWave
-	String bits = ""
-	
-	//ending X point of the wave
-	Variable startX,endX,delta,lastRise
-	startX = DimOffset(inWave,0)
-	endX = pnt2x(inWave,DimSize(inWave,0) - 1)
-	delta = 0
-	
-	Do
-		//initial rising edge of block indicating first bit
-		FindLevel/Q/EDGE=1/R=(startX,endX) inWave,3
-		startX = V_LevelX
-		
-		//no levels found
-		If(V_flag)
-			break
-		EndIf
-		
-		//initial falling edge of block indicating first bit
-		FindLevel/Q/EDGE=2/R=(startX,endX) inWave,3
-		
-		// duration for the block will be variable. Need to adjust bit detection accordingly
-		delta = V_LevelX - startX
-		
-		//small delta means end of sequence
-		If(delta < 0.0005)
-			FindLevels/Q/EDGE=1/R=(lastRise - 2 * deltax(inWave),endX) inWave,3
-			If(V_LevelsFound == 3)
-				bits[strlen(bits)-1] = "0"
-			EndIf
-			break
-		EndIf
-		
-		//replace start x point with previous falling level
-		startX = V_LevelX
-		
-		//detects the leading edge of bit as high or low
-		//time period it searches is adjusted according to previous block length
-		FindLevel/Q/EDGE=1/R=(startX,startX + delta) inWave,3
-		lastRise = V_LevelX
-		
-		If(numtype(lastRise) == 2)
-			lastRise = startX
-			bits += "0"
-		EndIf
-		
-		//found edge within delta
-		If(!V_flag) 
-			//is there a corresponding falling edge with 1/3 delta?
-			FindLevel/Q/EDGE=2/R=(lastRise,lastRise + delta/3) inWave,3
-			
-			If(!V_flag)
-				bits += "1"
-				//new start x is the falling edge of the bit
-				startX = V_LevelX
-			Else
-				bits += "0"
-				//last rising edge must have been start of next block
-				startX = lastRise - 2 * deltax(inWave) //back up a couple points to redetect block rising edge on next loop
-			EndIf
-		EndIf
-	While(1)
-	
-	KillWaves/Z W_FindLevels
-	
-	String outputStr = binaryToStr(bits)
-	return outputStr
-End
-
-//Takes binary sequence and converts it to ASCII codes, then converts that to a string
-Function/S binaryToStr(input)
-	String input
-	Variable len = strlen(input)
-	Variable numChars = len / 8
-	Variable i,j,total,startPos,endPos
-	String asciiStr = ""
-	String output = ""
-	Variable asciiCode
-	
-	startPos = 0 
-	endPos = 7
-	
-	For(i=0;i<numChars;i+=1)
-		total = 0
-		String word = input[startPos,endPos]
-		
-		For(j=0;j<8;j+=1)
-			Variable char = str2num(word[j])
-			total = total * 2 + char
-		EndFor
-		
-		asciiStr += num2str(total) + ";"
-		startPos += 8
-		endPos += 8
-	EndFor
-	
-	For(i=0;i<numChars;i+=1)
-		asciiCode = str2num(StringFromList(i,asciiStr,";"))
-		output += num2char(asciiCode)
-	EndFor
-	
-	return output
-End

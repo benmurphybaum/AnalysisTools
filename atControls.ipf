@@ -1413,8 +1413,8 @@ Function atSetVarProc(sva) : SetVariableControl
 						Wave/T/Z unGrouped = root:Packages:analysisTools:DataSets:ogAT_WaveListTable_UnGroup
 						
 						//filter the waves
-						filterByGroup(ds,bufferZero=1)
-						filterByGroup(unGrouped,bufferZero=1)
+						filterByGroup(ds,bufferZero=0)
+						filterByGroup(unGrouped,bufferZero=0)
 								
 						//group the waves
 						setWaveGrouping(unGrouped,ds)
@@ -1441,8 +1441,8 @@ Function atSetVarProc(sva) : SetVariableControl
 						
 						
 						//filter the waves
-						filterByGroup(ds,bufferZero=1)
-						filterByGroup(unGrouped,bufferZero=1)
+						filterByGroup(ds,bufferZero=0)
+						filterByGroup(unGrouped,bufferZero=0)
 						
 						//group the waves
 						setWaveGrouping(unGrouped,ds)

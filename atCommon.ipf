@@ -1473,6 +1473,12 @@ Function/S getWaveNames([ignoreWaveGrouping,dataset,waveset])
 	
 	SVAR wsDims = root:Packages:analysisTools:DataSets:wsDims
 	NVAR numWaveSets = root:Packages:analysisTools:DataSets:numWaveSets
+	
+	If(strlen(dataset))
+		wsDims = getWaveSetDims(dataset)
+		numWaveSets = ItemsInList(wsDims,";")
+	EndIf
+
 	NVAR wsn = root:Packages:analysisTools:DataSets:wsn
 	Variable i
 	
@@ -1534,6 +1540,9 @@ Function/S getWaveNames([ignoreWaveGrouping,dataset,waveset])
 		
 			Else
 				Wave/T ds = GetDataSetWave(dsName=S_Value)
+				wsDims = getWaveSetDims(S_Value)
+				numWaveSets = ItemsInList(wsDims,";")
+				
 				pos = tableMatch("*WSN " + num2str(wsn) + "*",ds) + 1//first wave of the waveset
 				If(pos == 0) //no wavesets defined, take all the waves at once
 					endpos = DimSize(ds,0)
